@@ -1,0 +1,93 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+--Company Table
+CREATE TABLE IF NOT EXISTS agents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+--Products Specification Table
+CREATE TABLE IF NOT EXISTS resource_specifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id UUID REFERENCES agents(id),
+    name TEXT NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+--Products Table
+CREATE TABLE IF NOT EXISTS economic_resources (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    resource_specification_id UUID REFERENCES resource_specifications(id),
+    name TEXT NOT NULL,
+    note TEXT,
+    accounting_quantity NUMERIC NOT NULL,
+    on_hand_quantity NUMERIC NOT NULL,
+    unit_of_measure TEXT NOT NULL,
+    tracking_identifier TEXT,
+    current_location TEXT,
+    lot TEXT,
+    contained_in UUID REFERENCES economic_resources(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resource_type TEXT NOT NULL
+);
+
+--Recipe Process Map Table
+CREATE TABLE IF NOT EXISTS recipes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id UUID REFERENCES agents(id),
+    name TEXT NOT NULL,
+    note TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+--Recipe Process Map Resources Table
+CREATE TABLE IF NOT EXISTS recipe_resources (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_id UUID REFERENCES recipes(id),
+    resource_specification_id UUID REFERENCES resource_specifications(id)
+);
+
+--Recipe Process Table
+CREATE TABLE IF NOT EXISTS processes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_id UUID REFERENCES recipes(id),
+    name TEXT NOT NULL,
+    note TEXT,
+    output_of UUID REFERENCES recipes(id)
+);
+
+--Recipe Process Events
+CREATE TABLE IF NOT EXISTS recipe_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    process_id UUID REFERENCES processes(id),
+    action TEXT NOT NULL,
+    role TEXT NOT NULL,
+    resource_specification_id UUID REFERENCES resource_specifications(id),
+    economic_resource_id UUID REFERENCES economic_resources(id),
+    note TEXT,
+    is_commitment BOOLEAN,
+    commitment_status TEXT,
+    triggers_commitment BOOLEAN,
+    fulfills_commitment_id UUID REFERENCES recipe_events(id),
+    location TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--Process Execution
+CREATE TABLE IF NOT EXISTS economic_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_event_id UUID REFERENCES recipe_events(id),
+    provider_id UUID REFERENCES agents(id),
+    receiver_id UUID REFERENCES agents(id),
+    note TEXT,
+    resource_specification_id UUID REFERENCES resource_specifications(id),
+    resource_inventoried_as UUID REFERENCES economic_resources(id),
+    resource_quantity NUMERIC NOT NULL,
+    to_resource_specification_id UUID REFERENCES resource_specifications(id),
+    to_unit_of_measure TEXT,
+    has_point_in_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
