@@ -1,6 +1,9 @@
+use vf::establish_connection;
 
 
-fn main() {
-    
+async fn main() -> std::io::Result<()> {
+    let conn = &mut  establish_connection();
+
+
 }
 

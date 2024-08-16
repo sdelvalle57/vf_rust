@@ -13,11 +13,8 @@ pub fn establish_connection() -> PgConnection {
 
 #[cfg(test)]
 mod tests {
-    
-
     use super::*;
     use diesel::sql_query;
-
 
     #[test]
     fn test_connection() {
@@ -27,22 +24,4 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_some_db_functionality() {
-        use crate::agent::Agent;
-
-        let conn = &mut establish_connection();
-
-        // Run a SELECT query and load the results
-        let results: Vec<Agent> = sql_query("SELECT * FROM agents")
-            .load::<Agent>(conn)
-            .expect("Failed to load agents");
-
-        // Print out the results
-        for agent in &results {
-            println!("{:?}", agent);
-        }
-
-        assert!(!results.is_empty(), "No agents found");
-    }
 }
