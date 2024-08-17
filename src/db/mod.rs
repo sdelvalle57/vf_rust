@@ -1,2 +1,2 @@
-pub mod query;
+pub mod conn;
 pub mod schema;

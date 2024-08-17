@@ -1,9 +1,10 @@
+use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use uuid::Uuid;
-use crate::schema::agents;
-use chrono::NaiveDateTime;
 
-#[derive(Queryable, Selectable, Debug, QueryableByName)]
+use crate::db::schema::agents;
+
+#[derive(Queryable, Selectable, Debug)]
 #[diesel(table_name = agents)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Agent {
@@ -40,13 +41,13 @@ impl Agent {
 
 #[cfg(test)]
 mod tests {
-    use crate::db::establish_connection;
+    use crate::db::conn::establish_connection;
 
     #[test]
     fn test_insert_agent() {
         use crate::agent::Agent;
 
-        let conn = &mut establish_connection();
+        let conn = & mut establish_connection();
 
         let new_agent = Agent::new(conn, "Santiago".to_string(), Some("Santiagos".to_string()));
 

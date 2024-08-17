@@ -54,3 +54,6 @@ Ensure that listen_addresses is set to '*' to allow connections from any IP
 Copy the content of table into up.sql
 
 `diesel migration run`
+
+## Run The Project
+`cargo run`
