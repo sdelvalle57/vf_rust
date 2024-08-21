@@ -1,5 +1,6 @@
 mod db;
 mod graphql;
+mod agent;
 
 
 use db::conn::establish_connection;

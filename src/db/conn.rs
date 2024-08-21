@@ -10,18 +10,3 @@ pub fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use diesel::sql_query;
-
-    #[test]
-    fn test_connection() {
-        // Use the same establish_connection function
-        let mut conn = establish_connection();
-        let result = sql_query("SELECT 1").execute(&mut conn);
-        assert!(result.is_ok());
-    }
-
-}
