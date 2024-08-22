@@ -55,7 +55,7 @@ diesel::table! {
         recipe_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
-        output_of -> Nullable<Uuid>,
+        output_of -> Uuid,
     }
 }
 
@@ -112,6 +112,7 @@ diesel::table! {
 diesel::joinable!(economic_events -> economic_resources (resource_inventoried_as));
 diesel::joinable!(economic_events -> recipe_events (recipe_event_id));
 diesel::joinable!(economic_resources -> resource_specifications (resource_specification_id));
+diesel::joinable!(processes -> recipes (recipe_id));
 diesel::joinable!(recipe_events -> economic_resources (economic_resource_id));
 diesel::joinable!(recipe_events -> processes (process_id));
 diesel::joinable!(recipe_events -> resource_specifications (resource_specification_id));

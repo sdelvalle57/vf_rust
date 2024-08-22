@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS processes (
     recipe_id UUID REFERENCES recipes(id),
     name TEXT NOT NULL,
     note TEXT,
-    output_of UUID REFERENCES recipes(id)
+    output_of UUID NOT NULL REFERENCES processes(id)  -- Correct reference and NOT NULL constraint
 );
 
 --Recipe Process Events
