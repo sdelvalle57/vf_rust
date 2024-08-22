@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use diesel::{prelude::*, Insertable, Queryable};
+use diesel::{Insertable, Queryable};
 use juniper::GraphQLObject;
 use uuid::Uuid;
 

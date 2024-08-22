@@ -12,13 +12,13 @@ diesel::table! {
 diesel::table! {
     economic_events (id) {
         id -> Uuid,
-        recipe_event_id -> Nullable<Uuid>,
-        provider_id -> Nullable<Uuid>,
-        receiver_id -> Nullable<Uuid>,
+        recipe_event_id -> Uuid,
+        provider_id -> Uuid,
+        receiver_id -> Uuid,
         note -> Nullable<Text>,
         resource_specification_id -> Nullable<Uuid>,
         resource_inventoried_as -> Nullable<Uuid>,
-        resource_quantity -> Numeric,
+        resource_quantity -> Nullable<Numeric>,
         to_resource_specification_id -> Nullable<Uuid>,
         to_unit_of_measure -> Nullable<Text>,
         has_point_in_time -> Timestamp,
@@ -28,7 +28,7 @@ diesel::table! {
 diesel::table! {
     economic_resources (id) {
         id -> Uuid,
-        resource_specification_id -> Nullable<Uuid>,
+        resource_specification_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         accounting_quantity -> Numeric,
@@ -46,7 +46,7 @@ diesel::table! {
 diesel::table! {
     processes (id) {
         id -> Uuid,
-        recipe_id -> Nullable<Uuid>,
+        recipe_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         output_of -> Nullable<Uuid>,
@@ -56,7 +56,7 @@ diesel::table! {
 diesel::table! {
     recipe_events (id) {
         id -> Uuid,
-        process_id -> Nullable<Uuid>,
+        process_id -> Uuid,
         action -> Text,
         role -> Text,
         resource_specification_id -> Nullable<Uuid>,
@@ -74,15 +74,15 @@ diesel::table! {
 diesel::table! {
     recipe_resources (id) {
         id -> Uuid,
-        recipe_id -> Nullable<Uuid>,
-        resource_specification_id -> Nullable<Uuid>,
+        recipe_id -> Uuid,
+        resource_specification_id -> Uuid,
     }
 }
 
 diesel::table! {
     recipes (id) {
         id -> Uuid,
-        agent_id -> Nullable<Uuid>,
+        agent_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,
@@ -92,7 +92,7 @@ diesel::table! {
 diesel::table! {
     resource_specifications (id) {
         id -> Uuid,
-        agent_id -> Nullable<Uuid>,
+        agent_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,
