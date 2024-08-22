@@ -1,28 +1,25 @@
-use crate::agent::{Agent, NewAgent};
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use juniper::{FieldResult, GraphQLObject};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-
+use diesel::prelude::*; // Importing prelude also imports RunQueryDsl and other useful traits
+use juniper::{graphql_object, FieldResult};
+use crate::{agent::{Agent, NewAgent}, db::schema::agents, graphql::context::Context};
 
 pub struct MutationRoot;
 
-#[juniper::graphql_object]
+#[graphql_object(Context = Context)]
 impl MutationRoot {
+    fn new_agent(context: &Context, name: String, note: Option<String>) -> FieldResult<Agent> {
+        let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
 
-    fn new_agent(name: String, note: Option<String>) -> FieldResult<Agent> {
-        let agent = NewAgent::new(&name, note.as_deref());
+        // Create the new agent instance
+        let new_agent = NewAgent {
+            name: &name,
+            note: note.as_deref(),
+        };
 
-        let d = NaiveDate::from_ymd_opt(2015, 6, 3).unwrap();
-        let t = NaiveTime::from_hms_milli_opt(12, 34, 56, 789).unwrap();
+        // Insert the new agent into the database
+        let inserted_agent = diesel::insert_into(agents::table)
+            .values(&new_agent)
+            .get_result(conn)?;
 
-        let dt = NaiveDateTime::new(d, t);
-
-        Ok(Agent {
-            created_at: dt,
-            id: Uuid::new_v4(),
-            name: name.to_string(),
-            note: note.map(|s| s.to_string()),
-        })
+        Ok(inserted_agent)
     }
 }

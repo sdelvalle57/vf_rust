@@ -1,8 +1,7 @@
 use chrono::NaiveDateTime;
-use diesel::prelude::*;
+use diesel::{prelude::*, Insertable, Queryable};
 use juniper::GraphQLObject;
 use uuid::Uuid;
-
 
 use crate::db::schema::agents;
 

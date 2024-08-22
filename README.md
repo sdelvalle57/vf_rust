@@ -28,11 +28,11 @@ Ensure that listen_addresses is set to '*' to allow connections from any IP
 
 `psql`
 
-`CREATE USER your_user_name WITH PASSWORD 'your_password';`
+`CREATE USER value_flows WITH PASSWORD 'valueflows';`
 
-`CREATE DATABASE your_database_name;`
+`CREATE DATABASE vf5;`
 
-`GRANT ALL PRIVILEGES ON DATABASE your_database_name TO your_user_name;`
+`GRANT ALL PRIVILEGES ON DATABASE vf5 TO value_flows;`
 
 `\du`
 
