@@ -29,11 +29,12 @@ CREATE TABLE IF NOT EXISTS economic_resources (
     on_hand_quantity NUMERIC NOT NULL,
     unit_of_measure TEXT NOT NULL,
     tracking_identifier TEXT,
-    current_location TEXT,
+    current_location TEXT NOT NULL,
     lot TEXT,
     contained_in UUID REFERENCES economic_resources(id),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    resource_type TEXT NOT NULL
+    resource_type TEXT NOT NULL,
+    reference_number SERIAL
 );
 
 --Recipe Process Map Table
