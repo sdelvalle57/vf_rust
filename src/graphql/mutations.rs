@@ -6,7 +6,7 @@ use crate::{
     agent::{Agent, NewAgent},
     db::schema::{agents, resource_specifications},
     graphql::context::Context,
-    resource_specification::{NewResourceSpecification, ResourceSpecification},
+    resource_specification::{NewResourceSpecification, ResourceSpecification, ResourceType},
 };
 
 pub struct MutationRoot;
@@ -35,6 +35,7 @@ impl MutationRoot {
         agent_id: Uuid, 
         name: String,
         note: Option<String>,
+        resource_type: String
     ) -> FieldResult<ResourceSpecification> {
         let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
 
@@ -43,6 +44,7 @@ impl MutationRoot {
             agent_id: &agent_id,
             name: &name,
             note: note.as_deref(),
+            resource_type: &resource_type
         };
 
         // Insert the new resource specification into the database

@@ -1,5 +1,11 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "resource_type_enum"))]
+    pub struct ResourceTypeEnum;
+}
+
 diesel::table! {
     agents (id) {
         id -> Uuid,
@@ -39,7 +45,6 @@ diesel::table! {
         lot -> Nullable<Text>,
         contained_in -> Nullable<Uuid>,
         created_at -> Timestamp,
-        resource_type -> Text,
         reference_number -> Int4,
     }
 }
@@ -91,12 +96,16 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ResourceTypeEnum;
+
     resource_specifications (id) {
         id -> Uuid,
         agent_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,
+        resource_type -> ResourceTypeEnum,
     }
 }
 

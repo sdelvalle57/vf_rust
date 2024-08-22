@@ -1,6 +1,7 @@
 -- Your SQL goes here
 -- Your SQL goes here
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE TYPE resource_type_enum AS ENUM ('Product', 'Resource', 'Asset');
 
 --Company Table
 CREATE TABLE IF NOT EXISTS agents (
@@ -16,7 +17,8 @@ CREATE TABLE IF NOT EXISTS resource_specifications (
     agent_id UUID REFERENCES agents(id),
     name TEXT NOT NULL,
     note TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    resource_type resource_type_enum NOT NULL
 );
 
 --Products Table
@@ -33,7 +35,6 @@ CREATE TABLE IF NOT EXISTS economic_resources (
     lot TEXT,
     contained_in UUID REFERENCES economic_resources(id),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    resource_type TEXT NOT NULL,
     reference_number SERIAL
 );
 
