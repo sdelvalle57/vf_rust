@@ -2,8 +2,16 @@
 
 pub mod sql_types {
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "action_type_enum"))]
+    pub struct ActionTypeEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "resource_type_enum"))]
     pub struct ResourceTypeEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "role_enum"))]
+    pub struct RoleEnum;
 }
 
 diesel::table! {
@@ -18,13 +26,13 @@ diesel::table! {
 diesel::table! {
     economic_events (id) {
         id -> Uuid,
-        recipe_event_id -> Uuid,
-        provider_id -> Uuid,
-        receiver_id -> Uuid,
+        recipe_event_id -> Nullable<Uuid>,
+        provider_id -> Nullable<Uuid>,
+        receiver_id -> Nullable<Uuid>,
         note -> Nullable<Text>,
         resource_specification_id -> Nullable<Uuid>,
         resource_inventoried_as -> Nullable<Uuid>,
-        resource_quantity -> Nullable<Numeric>,
+        resource_quantity -> Numeric,
         to_resource_specification_id -> Nullable<Uuid>,
         to_unit_of_measure -> Nullable<Text>,
         has_point_in_time -> Timestamp,
@@ -34,7 +42,7 @@ diesel::table! {
 diesel::table! {
     economic_resources (id) {
         id -> Uuid,
-        resource_specification_id -> Uuid,
+        resource_specification_id -> Nullable<Uuid>,
         name -> Text,
         note -> Nullable<Text>,
         accounting_quantity -> Numeric,
@@ -52,7 +60,7 @@ diesel::table! {
 diesel::table! {
     processes (id) {
         id -> Uuid,
-        recipe_id -> Uuid,
+        recipe_id -> Nullable<Uuid>,
         name -> Text,
         note -> Nullable<Text>,
         output_of -> Uuid,
@@ -60,11 +68,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ActionTypeEnum;
+    use super::sql_types::RoleEnum;
+
     recipe_events (id) {
         id -> Uuid,
-        process_id -> Uuid,
-        action -> Text,
-        role -> Text,
+        process_id -> Nullable<Uuid>,
+        action -> ActionTypeEnum,
+        role -> RoleEnum,
         resource_specification_id -> Nullable<Uuid>,
         economic_resource_id -> Nullable<Uuid>,
         note -> Nullable<Text>,
@@ -80,15 +92,15 @@ diesel::table! {
 diesel::table! {
     recipe_resources (id) {
         id -> Uuid,
-        recipe_id -> Uuid,
-        resource_specification_id -> Uuid,
+        recipe_id -> Nullable<Uuid>,
+        resource_specification_id -> Nullable<Uuid>,
     }
 }
 
 diesel::table! {
     recipes (id) {
         id -> Uuid,
-        agent_id -> Uuid,
+        agent_id -> Nullable<Uuid>,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,
@@ -101,7 +113,7 @@ diesel::table! {
 
     resource_specifications (id) {
         id -> Uuid,
-        agent_id -> Uuid,
+        agent_id -> Nullable<Uuid>,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,

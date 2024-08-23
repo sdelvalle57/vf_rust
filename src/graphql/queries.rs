@@ -9,6 +9,7 @@ use diesel::RunQueryDsl; // Specifically import RunQueryDsl to get access to the
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
+
 pub struct QueryRoot;
 
 #[graphql_object(Context = Context)]
