@@ -4,15 +4,16 @@ use uuid::Uuid;
 
 use crate::{
     agent::{Agent, NewAgent},
-    db::schema::{agents, resource_specifications},
+    db::schema::{agents, resource_specifications::{self}},
     graphql::context::Context,
-    // resource_specification::{NewResourceSpecification, ResourceSpecification, ResourceType},
+    resource_specification::{NewResourceSpecification, ResourceSpecification, ResourceType},
 };
 
 pub struct MutationRoot;
 
 #[graphql_object(Context = Context)]
 impl MutationRoot {
+    /*** Agents */
     fn create_agent(context: &Context, name: String, note: Option<String>) -> FieldResult<Agent> {
         let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
 
@@ -30,28 +31,32 @@ impl MutationRoot {
         Ok(inserted_agent)
     }
 
-    // fn create_resource_specification(
-    //     context: &Context,
-    //     agent_id: Uuid, 
-    //     name: String,
-    //     note: Option<String>,
-    //     resource_type: ResourceType
-    // ) -> FieldResult<ResourceSpecification> {
-    //     let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
+    /** Resource Specifications */
+    fn create_resource_specification(
+        context: &Context,
+        agent_id: Uuid, 
+        name: String,
+        note: Option<String>,
+        resource_type: ResourceType,
+        unit_of_measure: String
+    ) -> FieldResult<ResourceSpecification> {
+        let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
 
-    //     // Create the new resource specification instance
-    //     let new_resource_spec = NewResourceSpecification {
-    //         agent_id: &agent_id,
-    //         name: &name,
-    //         note: note.as_deref(),
-    //         resource_type: &resource_type
-    //     };
+        // Create the new resource specification instance
+        let new_resource_spec = NewResourceSpecification {
+            agent_id: &agent_id,
+            name: &name,
+            note: note.as_deref(),
+            resource_type: &resource_type,
+            unit_of_measure: &unit_of_measure
+        };
 
-    //     // Insert the new resource specification into the database
-    //     let inserted_resource_spec = diesel::insert_into(resource_specifications::table)
-    //         .values(&new_resource_spec)
-    //         .get_result(conn)?;
+        // Insert the new resource specification into the database
+        let inserted_resource_spec = diesel::insert_into(resource_specifications::table)
+            .values(&new_resource_spec)
+            .get_result(conn)?;
 
-    //     Ok(inserted_resource_spec)
-    // }
+        Ok(inserted_resource_spec)
+    }
 }
+

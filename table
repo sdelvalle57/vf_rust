@@ -2,7 +2,7 @@
 -- Your SQL goes here
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE resource_type_enum AS ENUM ('Product', 'Resource', 'Asset');
-CREATE TYPE action_type_enum AS ENUM ('Cite', 'Produce', 'Consume', 'Transfer', 'Use');
+CREATE TYPE action_type_enum AS ENUM ('Cite', 'Produce', 'Consume', 'Transfer', 'Use', 'Load', 'Unload');
 CREATE TYPE role_enum AS ENUM ('Input', 'Output');
 CREATE TYPE commitment_status_enum AS ENUM ('Fulfilled', 'Output');
 
@@ -17,22 +17,22 @@ CREATE TABLE IF NOT EXISTS agents (
 --Products Specification Table
 CREATE TABLE IF NOT EXISTS resource_specifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID REFERENCES agents(id),
+    agent_id UUID NOT NULL REFERENCES agents(id),
     name TEXT NOT NULL,
     note TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    resource_type resource_type_enum NOT NULL
+    resource_type resource_type_enum NOT NULL,
+    unit_of_measure TEXT NOT NULL
 );
 
 --Products Table
 CREATE TABLE IF NOT EXISTS economic_resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    resource_specification_id UUID REFERENCES resource_specifications(id),
+    resource_specification_id UUID NOT NULL REFERENCES resource_specifications(id),
     name TEXT NOT NULL,
     note TEXT,
     accounting_quantity NUMERIC NOT NULL,
     on_hand_quantity NUMERIC NOT NULL,
-    unit_of_measure TEXT NOT NULL,
     tracking_identifier TEXT,
     current_location TEXT NOT NULL,
     lot TEXT,
@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS economic_resources (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     reference_number SERIAL
 );
+
 
 --Recipe Process Map Table
 CREATE TABLE IF NOT EXISTS recipes (

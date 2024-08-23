@@ -15,6 +15,8 @@ pub mod sql_types {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     agents (id) {
         id -> Uuid,
         name -> Text,
@@ -24,6 +26,8 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     economic_events (id) {
         id -> Uuid,
         recipe_event_id -> Nullable<Uuid>,
@@ -40,14 +44,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     economic_resources (id) {
         id -> Uuid,
-        resource_specification_id -> Nullable<Uuid>,
+        resource_specification_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         accounting_quantity -> Numeric,
         on_hand_quantity -> Numeric,
-        unit_of_measure -> Text,
         tracking_identifier -> Nullable<Text>,
         current_location -> Text,
         lot -> Nullable<Text>,
@@ -58,6 +63,8 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     processes (id) {
         id -> Uuid,
         recipe_id -> Nullable<Uuid>,
@@ -90,6 +97,8 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     recipe_resources (id) {
         id -> Uuid,
         recipe_id -> Nullable<Uuid>,
@@ -98,6 +107,8 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+
     recipes (id) {
         id -> Uuid,
         agent_id -> Nullable<Uuid>,
@@ -113,11 +124,12 @@ diesel::table! {
 
     resource_specifications (id) {
         id -> Uuid,
-        agent_id -> Nullable<Uuid>,
+        agent_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,
         resource_type -> ResourceTypeEnum,
+        unit_of_measure -> Text,
     }
 }
 
