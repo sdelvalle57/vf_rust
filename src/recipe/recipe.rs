@@ -1,47 +1,67 @@
-// Process Map
+use chrono::NaiveDateTime;
+use diesel::{Insertable, Queryable};
+use juniper::GraphQLObject;
+use uuid::Uuid;
 
-use chrono::{DateTime, Utc};
+use crate::db::schema::{recipes, recipe_resources}; // Assuming you have these tables in your schema
 
-use crate::agent::Agent;
-use crate::resource_specification::{self, ResourceSpecification};
-
+#[derive(Queryable, GraphQLObject, Debug)]
+#[diesel(table_name = recipes)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Recipe {
-    pub id: String,
-    pub agent: Agent,
+    pub id: Uuid,
+    pub agent_id: Uuid,
     pub name: String,
-    pub note: String,
-    pub created_at: DateTime<Utc>,
+    pub note: Option<String>,
+    pub created_at: NaiveDateTime,
 }
 
+#[derive(Queryable, GraphQLObject, Debug)]
+#[diesel(table_name = recipe_resources)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct RecipeResource {
-    pub id: String,
-    pub recipe: Recipe,
-    pub resource_specification: ResourceSpecification
+    pub id: Uuid,
+    pub recipe_id: Uuid,
+    pub resource_specification_id: Uuid,
 }
 
-impl Recipe {
+#[derive(Insertable)]
+#[diesel(table_name = recipes)]
+pub struct NewRecipe<'a> {
+    pub agent_id: Uuid,
+    pub name: &'a str,
+    pub note: Option<&'a str>,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = recipe_resources)]
+pub struct NewRecipeResource {
+    pub recipe_id: Uuid,
+    pub resource_specification_id: Uuid,
+}
+
+impl<'a> NewRecipe<'a> {
     pub fn new(
-        id: &str,
-        agent: Agent,
-        name: &str,
-        note: &str,
-    ) -> Recipe {
-        Recipe {
-            id: id.to_string(),
-            agent,
-            name: name.to_string(),
-            note: note.to_string(),
-            created_at: Utc::now()
+        agent_id: Uuid,
+        name: &'a str,
+        note: Option<&'a str>,
+    ) -> Self {
+        NewRecipe {
+            agent_id,
+            name,
+            note,
         }
     }
 }
 
-impl RecipeResource {
-    pub fn new(id: &str, recipe: Recipe, resource_specification: ResourceSpecification) -> RecipeResource {
-        RecipeResource {
-            id: id.to_string(),
-            recipe,
-            resource_specification
+impl NewRecipeResource {
+    pub fn new(
+        recipe_id: Uuid,
+        resource_specification_id: Uuid,
+    ) -> Self {
+        NewRecipeResource {
+            recipe_id,
+            resource_specification_id,
         }
     }
 }

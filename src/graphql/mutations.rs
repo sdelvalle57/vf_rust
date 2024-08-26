@@ -1,12 +1,9 @@
-use diesel::prelude::*; // Importing prelude also imports RunQueryDsl and other useful traits
+use super::modules::{agent, economic_resource, resource_specification};
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
 use crate::{
-    agent::{Agent, NewAgent},
-    db::schema::{agents, resource_specifications::{self}},
-    graphql::context::Context,
-    resource_specification::{NewResourceSpecification, ResourceSpecification, ResourceType},
+    agent::Agent, economic_resource::EconomicResource, graphql::context::Context, resource_specification::{ResourceSpecification, ResourceType}
 };
 
 pub struct MutationRoot;
@@ -15,48 +12,50 @@ pub struct MutationRoot;
 impl MutationRoot {
     /*** Agents */
     fn create_agent(context: &Context, name: String, note: Option<String>) -> FieldResult<Agent> {
-        let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
-
-        // Create the new agent instance
-        let new_agent = NewAgent {
-            name: &name,
-            note: note.as_deref(),
-        };
-
-        // Insert the new agent into the database
-        let inserted_agent = diesel::insert_into(agents::table)
-            .values(&new_agent)
-            .get_result(conn)?;
-
-        Ok(inserted_agent)
+        agent::create_agent(&context, name, note)
     }
 
     /** Resource Specifications */
     fn create_resource_specification(
         context: &Context,
-        agent_id: Uuid, 
+        agent_id: Uuid,
         name: String,
         note: Option<String>,
         resource_type: ResourceType,
-        unit_of_measure: String
+        unit_of_measure: String,
     ) -> FieldResult<ResourceSpecification> {
-        let conn = &mut context.pool.get().expect("Failed to get DB connection from pool");
+        resource_specification::create_resource_specification(
+            &context,
+            agent_id,
+            name,
+            note,
+            resource_type,
+            unit_of_measure,
+        )
+    }
 
-        // Create the new resource specification instance
-        let new_resource_spec = NewResourceSpecification {
-            agent_id: &agent_id,
-            name: &name,
-            note: note.as_deref(),
-            resource_type: &resource_type,
-            unit_of_measure: &unit_of_measure
-        };
-
-        // Insert the new resource specification into the database
-        let inserted_resource_spec = diesel::insert_into(resource_specifications::table)
-            .values(&new_resource_spec)
-            .get_result(conn)?;
-
-        Ok(inserted_resource_spec)
+    /** Economic Resource */
+    fn create_economic_resource(
+        context: &Context,
+        resource_specification_id: Uuid,
+        name: String,
+        note: Option<String>,
+        accounting_quantity: i32,
+        tracking_identifier: Option<String>,
+        current_location: String,
+        lot: Option<String>,
+        contained_in: Option<Uuid>
+    ) -> FieldResult<EconomicResource> {
+        economic_resource::create_economic_resource(
+            &context,
+            resource_specification_id,
+            name,
+            note,
+            accounting_quantity,
+            tracking_identifier,
+            current_location,
+            lot,
+            contained_in
+        )
     }
 }
-

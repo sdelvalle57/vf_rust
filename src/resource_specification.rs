@@ -20,7 +20,7 @@ use crate::db::schema::{resource_specifications, sql_types::ResourceTypeEnum};
 pub struct ResourceTypeStruct;
 
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = ResourceTypeEnum)]
 pub enum ResourceType {
     Resource,
@@ -51,7 +51,7 @@ impl FromSql<ResourceTypeEnum, Pg> for ResourceType {
 }
 
 
-#[derive(Queryable, Debug, GraphQLObject)]
+#[derive(Queryable, Debug, GraphQLObject, Clone)]
 #[diesel(table_name = resource_specifications)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ResourceSpecification {

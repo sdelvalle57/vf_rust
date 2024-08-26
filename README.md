@@ -57,3 +57,5 @@ Copy the content of table into up.sql
 
 ## Run The Project
 `cargo run`
+
+`diesel print-schema > src/db/schema.rs`
