@@ -101,8 +101,8 @@ diesel::table! {
 
     recipe_resources (id) {
         id -> Uuid,
-        recipe_id -> Nullable<Uuid>,
-        resource_specification_id -> Nullable<Uuid>,
+        recipe_id -> Uuid,
+        resource_specification_id -> Uuid,
     }
 }
 
@@ -111,7 +111,7 @@ diesel::table! {
 
     recipes (id) {
         id -> Uuid,
-        agent_id -> Nullable<Uuid>,
+        agent_id -> Uuid,
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,

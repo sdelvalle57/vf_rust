@@ -3,6 +3,7 @@ mod graphql;
 mod agent;
 mod resource_specification;
 mod economic_resource;
+mod recipe;
 
 use crate::db::conn::establish_connection_pool;
 use crate::graphql::handler::start_server;

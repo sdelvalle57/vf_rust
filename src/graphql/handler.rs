@@ -6,9 +6,8 @@ use crate::graphql::schema::{Schema, create_schema};
 use crate::graphql::context::Context;
 use crate::db::conn::Pool;
 
-use std::{io, sync::Arc};
+use std::sync::Arc;
 use actix_web::{App, HttpServer};
-use actix_cors::Cors;
 use actix_web::web::Data;
 
 #[get("/graphiql")]

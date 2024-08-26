@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS economic_resources (
     resource_specification_id UUID NOT NULL REFERENCES resource_specifications(id),
     name TEXT NOT NULL,
     note TEXT,
-    accounting_quantity NUMERIC NOT NULL,
-    on_hand_quantity NUMERIC NOT NULL,
+    accounting_quantity INTEGER NOT NULL,
+    on_hand_quantity INTEGER NOT NULL,
     tracking_identifier TEXT,
     current_location TEXT NOT NULL,
     lot TEXT,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS economic_resources (
 --Recipe Process Map Table
 CREATE TABLE IF NOT EXISTS recipes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID REFERENCES agents(id),
+    agent_id UUID NOT NULL REFERENCES agents(id),
     name TEXT NOT NULL,
     note TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -54,8 +54,8 @@ CREATE TABLE IF NOT EXISTS recipes (
 --Recipe Process Map Resources Table
 CREATE TABLE IF NOT EXISTS recipe_resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    recipe_id UUID REFERENCES recipes(id),
-    resource_specification_id UUID REFERENCES resource_specifications(id)
+    recipe_id UUID NOT NULL REFERENCES recipes(id),
+    resource_specification_id NOT NULL UUID REFERENCES resource_specifications(id)
 );
 
 --Recipe Process Table
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS economic_events (
     note TEXT,
     resource_specification_id UUID REFERENCES resource_specifications(id),
     resource_inventoried_as UUID REFERENCES economic_resources(id),
-    resource_quantity NUMERIC NOT NULL,
+    resource_quantity INTEGER NOT NULL,
     to_resource_specification_id UUID REFERENCES resource_specifications(id),
     to_unit_of_measure TEXT,
     has_point_in_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

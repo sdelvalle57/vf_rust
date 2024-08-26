@@ -1,9 +1,9 @@
 use crate::{
-    agent::Agent, economic_resource::{EconomicResource, EconomicResourceWithSpec}, graphql::context::Context, resource_specification::ResourceSpecification
+    agent::Agent, economic_resource::{EconomicResource, EconomicResourceWithSpec}, graphql::context::Context, recipe::recipe::RecipeWithResources, resource_specification::ResourceSpecification
 };
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
-use super::{context, modules::{agent, economic_resource, resource_specification}};
+use super::modules::{agent, economic_resource, recipe, resource_specification};
 
 
 pub struct QueryRoot;
@@ -20,6 +20,7 @@ impl QueryRoot {
         agent::agent_by_id(&context, agent_id)
     }
 
+    
     /*** Resource Specifications */
     fn all_resource_specifications(context: &Context) -> FieldResult<Vec<ResourceSpecification>> {
         resource_specification::all_resource_specifications(&context)
@@ -53,6 +54,22 @@ impl QueryRoot {
         agent_id: Uuid
     ) -> FieldResult<Vec<EconomicResourceWithSpec>> {
         economic_resource::economic_resources_by_agent(&context, agent_id)
+    }
+
+
+    /*** Recipe */
+    fn recipe_by_id(
+        context: &Context,
+        recipe_id: Uuid
+    ) -> FieldResult<RecipeWithResources> {
+        recipe::recipe_by_id(&context, recipe_id)
+    }
+
+    fn recipes_by_agent(
+        context: &Context,
+        agent_id: Uuid
+    ) -> FieldResult<Vec<RecipeWithResources>> {
+        recipe::recipes_by_agent(&context, agent_id)
     }
 
 }

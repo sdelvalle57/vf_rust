@@ -3,7 +3,10 @@ use diesel::{Insertable, Queryable};
 use juniper::GraphQLObject;
 use uuid::Uuid;
 
-use crate::db::schema::{recipes, recipe_resources}; // Assuming you have these tables in your schema
+use crate::{
+    db::schema::{recipe_resources, recipes}, 
+    resource_specification::ResourceSpecification
+}; // Assuming you have these tables in your schema
 
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = recipes)]
@@ -28,9 +31,9 @@ pub struct RecipeResource {
 #[derive(Insertable)]
 #[diesel(table_name = recipes)]
 pub struct NewRecipe<'a> {
-    pub agent_id: Uuid,
+    pub agent_id: &'a Uuid,
     pub name: &'a str,
-    pub note: Option<&'a str>,
+    pub note: Option<&'a str>
 }
 
 #[derive(Insertable)]
@@ -40,19 +43,26 @@ pub struct NewRecipeResource {
     pub resource_specification_id: Uuid,
 }
 
-impl<'a> NewRecipe<'a> {
+#[derive(GraphQLObject, Debug)]
+pub struct RecipeWithResources {
+    recipe: Recipe,
+    resource_specifications: Vec<ResourceSpecification>
+}
+
+impl<'a>  NewRecipe<'a> {
     pub fn new(
-        agent_id: Uuid,
+        agent_id: &'a Uuid,
         name: &'a str,
         note: Option<&'a str>,
     ) -> Self {
         NewRecipe {
             agent_id,
-            name,
-            note,
+            name, 
+            note
         }
     }
 }
+
 
 impl NewRecipeResource {
     pub fn new(
@@ -62,6 +72,15 @@ impl NewRecipeResource {
         NewRecipeResource {
             recipe_id,
             resource_specification_id,
+        }
+    }
+}
+
+impl RecipeWithResources {
+    pub fn new(recipe: Recipe, resource_specifications: Vec<ResourceSpecification>) -> Self {
+        RecipeWithResources {
+            recipe,
+            resource_specifications
         }
     }
 }

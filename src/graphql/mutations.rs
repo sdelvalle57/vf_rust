@@ -1,9 +1,13 @@
-use super::modules::{agent, economic_resource, resource_specification};
+use super::modules::{agent, economic_resource, recipe, resource_specification};
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
 use crate::{
-    agent::Agent, economic_resource::EconomicResource, graphql::context::Context, resource_specification::{ResourceSpecification, ResourceType}
+    agent::Agent,
+    economic_resource::EconomicResource,
+    graphql::context::Context,
+    recipe::recipe::RecipeWithResources,
+    resource_specification::{ResourceSpecification, ResourceType},
 };
 
 pub struct MutationRoot;
@@ -44,7 +48,7 @@ impl MutationRoot {
         tracking_identifier: Option<String>,
         current_location: String,
         lot: Option<String>,
-        contained_in: Option<Uuid>
+        contained_in: Option<Uuid>,
     ) -> FieldResult<EconomicResource> {
         economic_resource::create_economic_resource(
             &context,
@@ -55,7 +59,18 @@ impl MutationRoot {
             tracking_identifier,
             current_location,
             lot,
-            contained_in
+            contained_in,
         )
+    }
+
+    /** Recipe */
+    fn create_recipe(
+        context: &Context,
+        agent_id: Uuid,
+        name: String,
+        note: Option<String>,
+        recipe_resources: Vec<Uuid>,
+    ) -> FieldResult<RecipeWithResources> {
+        recipe::create_recipe(&context, agent_id, name, note, recipe_resources)
     }
 }
