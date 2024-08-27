@@ -10,6 +10,8 @@ use uuid::Uuid;
 
 use super::resource_specification::resource_specifications_by_id;
 
+
+/** Queries */
 pub fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWithResources> {
     let conn = &mut context
         .pool
@@ -68,7 +70,6 @@ pub fn recipes_by_agent(
 }
 
 /*** Mutations */
-
 pub fn create_recipe(
     context: &Context,
     agent_id: Uuid,

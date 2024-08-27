@@ -1,4 +1,4 @@
-use super::modules::{agent, economic_resource, recipe, resource_specification};
+use super::modules::{agent, economic_resource, process, recipe, resource_specification};
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
@@ -6,7 +6,7 @@ use crate::{
     agent::Agent,
     economic_resource::EconomicResource,
     graphql::context::Context,
-    recipe::recipe::RecipeWithResources,
+    recipe::{process::ProcessWithRecipe, recipe::RecipeWithResources},
     resource_specification::{ResourceSpecification, ResourceType},
 };
 
@@ -73,4 +73,15 @@ impl MutationRoot {
     ) -> FieldResult<RecipeWithResources> {
         recipe::create_recipe(&context, agent_id, name, note, recipe_resources)
     }
+
+    // /** Process */
+    // fn create_process(
+    //     context: &Context,
+    //     recipe_id: Uuid,
+    //     name: String,
+    //     note: Option<String>,
+    //     output_of: Option<Uuid>,
+    // ) -> FieldResult<ProcessWithRecipe> {
+    //     process::create_process(&context, recipe_id, name, note, output_of)
+    // }
 }

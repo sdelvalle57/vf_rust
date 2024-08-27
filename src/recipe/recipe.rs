@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::{
     db::schema::{recipe_resources, recipes}, 
     resource_specification::ResourceSpecification
-}; // Assuming you have these tables in your schema
+}; 
 
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = recipes)]

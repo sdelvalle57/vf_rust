@@ -6,7 +6,6 @@ use diesel::{
     expression::AsExpression, 
     pg::{Pg, PgValue}, 
     serialize::{self, IsNull, Output, ToSql}, 
-    sql_types::SqlType, 
     Insertable, 
     Queryable
 };
@@ -14,10 +13,6 @@ use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
 use crate::db::schema::{resource_specifications, sql_types::ResourceTypeEnum};
-
-#[derive(SqlType)]
-#[diesel(postgres_type(name = "ResourceTypeEnum"))]
-pub struct ResourceTypeStruct;
 
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
@@ -64,7 +59,6 @@ pub struct ResourceSpecification {
     pub unit_of_measure: String
 }
 
-// Updated Insertable struct
 #[derive(Insertable, Debug)]
 #[diesel(table_name = resource_specifications)]
 pub struct NewResourceSpecification<'a> {
