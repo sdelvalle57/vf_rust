@@ -4,8 +4,7 @@ use juniper::GraphQLObject;
 use uuid::Uuid;
 
 use crate::{
-    db::schema::{recipe_resources, recipes}, 
-    resource_specification::ResourceSpecification
+    common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes} 
 }; 
 
 #[derive(Queryable, GraphQLObject, Debug)]

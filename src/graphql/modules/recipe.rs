@@ -1,8 +1,5 @@
 use crate::{
-    db::schema::{recipe_resources, recipes},
-    graphql::context::Context,
-    recipe::recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources},
-    resource_specification::ResourceSpecification,
+    common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes}, graphql::context::Context, recipe::recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources}
 };
 use diesel::prelude::*;
 use juniper::FieldResult;

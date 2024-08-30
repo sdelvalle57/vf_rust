@@ -1,8 +1,6 @@
 
 use crate::{
-    db::schema::resource_specifications,
-    graphql::context::Context,
-    resource_specification::{NewResourceSpecification, ResourceSpecification, ResourceType},
+    common::resource_specification::{NewResourceSpecification, ResourceSpecification, ResourceType}, db::schema::resource_specifications, graphql::context::Context
 };
 use diesel::prelude::*;
 use juniper::FieldResult;

@@ -3,11 +3,12 @@ use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
 use crate::{
-    agent::Agent,
-    economic_resource::EconomicResource,
+    common::{
+        agent::Agent, economic_resource::EconomicResource,
+        resource_specification::{ResourceSpecification, ResourceType},
+    },
     graphql::context::Context,
-    recipe::{recipe::RecipeWithResources},
-    resource_specification::{ResourceSpecification, ResourceType},
+    recipe::recipe::RecipeWithResources,
 };
 
 pub struct MutationRoot;

@@ -1,8 +1,6 @@
 
 use crate::{
-    db::schema::economic_resources, 
-    economic_resource::{EconomicResource, EconomicResourceWithSpec, NewEconomicResource}, 
-    graphql::context::Context
+    common::economic_resource::{EconomicResource, EconomicResourceWithSpec, NewEconomicResource}, db::schema::economic_resources, graphql::context::Context
 };
 use diesel::prelude::*;
 use juniper::FieldResult;

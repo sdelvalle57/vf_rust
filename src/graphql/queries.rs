@@ -1,9 +1,5 @@
 use crate::{
-    agent::Agent, 
-    economic_resource::{EconomicResource, EconomicResourceWithSpec}, 
-    graphql::context::Context, 
-    recipe::{process::Process, recipe::RecipeWithResources}, 
-    resource_specification::ResourceSpecification
+    common::{agent::Agent, economic_resource::{EconomicResource, EconomicResourceWithSpec}, resource_specification::ResourceSpecification}, graphql::context::Context, recipe::recipe::RecipeWithResources 
 };
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;

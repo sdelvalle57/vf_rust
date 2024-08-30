@@ -1,8 +1,6 @@
 
 use crate::{
-    agent::{Agent, NewAgent},
-    db::schema::agents,
-    graphql::context::Context,
+    common::agent::{Agent, NewAgent}, db::schema::agents, graphql::context::Context
 };
 use diesel::prelude::*;
 use juniper::FieldResult;

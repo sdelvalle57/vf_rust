@@ -4,7 +4,9 @@ use diesel::{prelude::Insertable, Queryable};
 use juniper::GraphQLObject;
 use uuid::Uuid;
 
-use crate::{db::schema::economic_resources::{self}, resource_specification::ResourceSpecification};
+use crate::db::schema::economic_resources;
+
+use super::resource_specification::ResourceSpecification;
 
 // Wrapper around BigDecimal
 
