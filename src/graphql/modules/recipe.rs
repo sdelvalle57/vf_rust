@@ -8,7 +8,7 @@ use diesel::prelude::*;
 use juniper::FieldResult;
 use uuid::Uuid;
 
-use super::resource_specification::resource_specifications_by_id;
+use super::resource_specification::resource_specification_by_id;
 
 
 /** Queries */
@@ -29,7 +29,7 @@ pub fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWit
         .load::<RecipeResource>(conn)?;
 
     for resource in recipe_resources {
-        let spec = resource_specifications_by_id(context, resource.resource_specification_id)?;
+        let spec = resource_specification_by_id(context, resource.resource_specification_id)?;
         resources.push(spec)
     }
 
@@ -59,7 +59,7 @@ pub fn recipes_by_agent(
             .load::<RecipeResource>(conn)?;
     
         for resource in recipe_resources {
-            let spec = resource_specifications_by_id(context, resource.resource_specification_id)?;
+            let spec = resource_specification_by_id(context, resource.resource_specification_id)?;
             resources.push(spec)
         }
 
@@ -84,7 +84,7 @@ pub fn create_recipe(
 
     let mut resources: Vec<ResourceSpecification> = Vec::new();
     for &resource in &recipe_resources {
-        let spec = resource_specifications_by_id(context, resource)?;
+        let spec = resource_specification_by_id(context, resource)?;
         resources.push(spec)
     }
 

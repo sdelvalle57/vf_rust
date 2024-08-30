@@ -7,7 +7,7 @@ use crate::{
 };
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
-use super::modules::{agent, economic_resource, process, recipe, resource_specification};
+use super::modules::{agent, economic_resource, recipe, resource_specification};
 
 
 pub struct QueryRoot;
@@ -37,11 +37,11 @@ impl QueryRoot {
         resource_specification::resource_specifications_by_agent(&context, agent_id)
     }
 
-    fn resource_specifications_by_id(
+    fn resource_specification_by_id(
         context: &Context,
         resource_specification_id: Uuid,
     ) -> FieldResult<ResourceSpecification> {
-        resource_specification::resource_specifications_by_id(&context, resource_specification_id)
+        resource_specification::resource_specification_by_id(&context, resource_specification_id)
     }
 
 
@@ -76,12 +76,4 @@ impl QueryRoot {
         recipe::recipes_by_agent(&context, agent_id)
     }
 
-
-    /*** Processes */
-    fn processes_by_recipe_id(
-        context: &Context,
-        recipe_id: Uuid
-    ) -> FieldResult<Vec<Process>> {
-        process::processes_by_recipe_id(&context, recipe_id)
-    }
 }

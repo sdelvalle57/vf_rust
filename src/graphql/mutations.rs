@@ -1,4 +1,4 @@
-use super::modules::{agent, economic_resource, process, recipe, resource_specification};
+use super::modules::{agent, economic_resource, recipe, resource_specification};
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
@@ -6,7 +6,7 @@ use crate::{
     agent::Agent,
     economic_resource::EconomicResource,
     graphql::context::Context,
-    recipe::{process::ProcessWithRecipe, recipe::RecipeWithResources},
+    recipe::{recipe::RecipeWithResources},
     resource_specification::{ResourceSpecification, ResourceType},
 };
 

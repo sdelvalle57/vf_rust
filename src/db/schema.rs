@@ -14,12 +14,20 @@ pub mod sql_types {
     pub struct FieldTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "field_value_enum"))]
+    pub struct FieldValueEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "recipe_template_type_enum"))]
+    pub struct RecipeTemplateTypeEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "resource_type_enum"))]
     pub struct ResourceTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "role_enum"))]
-    pub struct RoleEnum;
+    #[diesel(postgres_type(name = "role_type_enum"))]
+    pub struct RoleTypeEnum;
 }
 
 diesel::table! {
@@ -30,55 +38,6 @@ diesel::table! {
         name -> Text,
         note -> Nullable<Text>,
         created_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::EventTypeEnum;
-    use super::sql_types::RoleEnum;
-    use super::sql_types::ActionTypeEnum;
-
-    data_events (id) {
-        id -> Uuid,
-        template_id -> Uuid,
-        event_type -> EventTypeEnum,
-        role -> RoleEnum,
-        action -> ActionTypeEnum,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::FieldTypeEnum;
-
-    data_fields (id) {
-        id -> Uuid,
-        field -> Text,
-        field_type -> FieldTypeEnum,
-        note -> Nullable<Text>,
-        field_required -> Bool,
-        field_regulation_required -> Bool,
-        field_default_value -> Nullable<Text>,
-        data_event_id -> Uuid,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-
-    economic_events (id) {
-        id -> Uuid,
-        recipe_event_id -> Nullable<Uuid>,
-        provider_id -> Nullable<Uuid>,
-        receiver_id -> Nullable<Uuid>,
-        note -> Nullable<Text>,
-        resource_specification_id -> Nullable<Uuid>,
-        resource_inventoried_as -> Nullable<Uuid>,
-        resource_quantity -> Int4,
-        to_resource_specification_id -> Nullable<Uuid>,
-        to_unit_of_measure -> Nullable<Text>,
-        has_point_in_time -> Timestamp,
     }
 }
 
@@ -104,35 +63,96 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
 
-    processes (id) {
+    process_events (id) {
         id -> Uuid,
-        recipe_id -> Uuid,
-        name -> Text,
-        note -> Nullable<Text>,
-        output_of -> Nullable<Uuid>,
-        template_id -> Uuid,
+        process_flow_data_field_id -> Uuid,
+        query_value -> Nullable<Uuid>,
+        value -> Text,
+        reference_number -> Int4,
+        provider -> Uuid,
+        receiver -> Uuid,
+        created_at -> Timestamp,
     }
 }
 
 diesel::table! {
     use diesel::sql_types::*;
+    use super::sql_types::EventTypeEnum;
     use super::sql_types::ActionTypeEnum;
-    use super::sql_types::RoleEnum;
+    use super::sql_types::RoleTypeEnum;
 
-    recipe_events (id) {
+    process_flow (id) {
         id -> Uuid,
-        process_id -> Nullable<Uuid>,
-        action -> ActionTypeEnum,
-        role -> RoleEnum,
-        resource_specification_id -> Nullable<Uuid>,
-        economic_resource_id -> Nullable<Uuid>,
-        note -> Nullable<Text>,
-        is_commitment -> Nullable<Bool>,
-        commitment_status -> Nullable<Text>,
-        triggers_commitment -> Nullable<Bool>,
-        fulfills_commitment_id -> Nullable<Uuid>,
-        location -> Text,
+        process_id -> Uuid,
+        event_type -> EventTypeEnum,
+        action_type -> ActionTypeEnum,
+        role -> RoleTypeEnum,
         created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::FieldValueEnum;
+    use super::sql_types::FieldTypeEnum;
+
+    process_flow_data_fields (id) {
+        id -> Uuid,
+        process_flow_id -> Uuid,
+        field_value -> FieldValueEnum,
+        field -> Text,
+        field_type -> FieldTypeEnum,
+        note -> Nullable<Text>,
+        required -> Bool,
+        query -> Nullable<Text>,
+        default_value -> Nullable<Text>,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+
+    processes (id) {
+        id -> Uuid,
+        recipe_template_id -> Uuid,
+        recipe_id -> Uuid,
+        name -> Text,
+        note -> Nullable<Text>,
+        output_of -> Nullable<Uuid>,
+        template_id -> Uuid,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::FieldValueEnum;
+    use super::sql_types::FieldTypeEnum;
+
+    recipe_flow_template_data_fields (id) {
+        id -> Uuid,
+        recipe_flow_template_id -> Uuid,
+        field_value -> FieldValueEnum,
+        field -> Text,
+        field_type -> FieldTypeEnum,
+        note -> Nullable<Text>,
+        required -> Bool,
+        query -> Nullable<Text>,
+        default_value -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::EventTypeEnum;
+    use super::sql_types::RoleTypeEnum;
+
+    recipe_flow_templates (id) {
+        id -> Uuid,
+        recipe_template_id -> Uuid,
+        event_type -> EventTypeEnum,
+        role_type -> RoleTypeEnum,
     }
 }
 
@@ -143,6 +163,28 @@ diesel::table! {
         id -> Uuid,
         recipe_id -> Uuid,
         resource_specification_id -> Uuid,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::RecipeTemplateTypeEnum;
+
+    recipe_templates (id) {
+        id -> Uuid,
+        name -> Text,
+        recipe_template_type -> RecipeTemplateTypeEnum,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+
+    recipe_templates_access (id) {
+        id -> Uuid,
+        agent_id -> Uuid,
+        recipe_template_id -> Uuid,
     }
 }
 
@@ -173,40 +215,32 @@ diesel::table! {
     }
 }
 
-diesel::table! {
-    use diesel::sql_types::*;
-
-    templates (id) {
-        id -> Uuid,
-        name -> Text,
-    }
-}
-
-diesel::joinable!(data_events -> templates (template_id));
-diesel::joinable!(data_fields -> data_events (data_event_id));
-diesel::joinable!(economic_events -> economic_resources (resource_inventoried_as));
-diesel::joinable!(economic_events -> recipe_events (recipe_event_id));
 diesel::joinable!(economic_resources -> resource_specifications (resource_specification_id));
+diesel::joinable!(process_events -> process_flow_data_fields (process_flow_data_field_id));
+diesel::joinable!(process_flow -> processes (process_id));
+diesel::joinable!(process_flow_data_fields -> process_flow (process_flow_id));
 diesel::joinable!(processes -> recipes (recipe_id));
-diesel::joinable!(processes -> templates (template_id));
-diesel::joinable!(recipe_events -> economic_resources (economic_resource_id));
-diesel::joinable!(recipe_events -> processes (process_id));
-diesel::joinable!(recipe_events -> resource_specifications (resource_specification_id));
+diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
+diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> resource_specifications (resource_specification_id));
+diesel::joinable!(recipe_templates_access -> agents (agent_id));
+diesel::joinable!(recipe_templates_access -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipes -> agents (agent_id));
 diesel::joinable!(resource_specifications -> agents (agent_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     agents,
-    data_events,
-    data_fields,
-    economic_events,
     economic_resources,
+    process_events,
+    process_flow,
+    process_flow_data_fields,
     processes,
-    recipe_events,
+    recipe_flow_template_data_fields,
+    recipe_flow_templates,
     recipe_resources,
+    recipe_templates,
+    recipe_templates_access,
     recipes,
     resource_specifications,
-    templates,
 );

@@ -1,12 +1,11 @@
--- Your SQL goes here
--- Your SQL goes here
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE resource_type_enum AS ENUM ('Product', 'Resource', 'Asset');
-CREATE TYPE action_type_enum AS ENUM ('Cite', 'Produce', 'Consume', 'Transfer', 'Use', 'Load', 'Unload');
-CREATE TYPE role_enum AS ENUM ('Input', 'Output');
-CREATE TYPE commitment_status_enum AS ENUM ('Fulfilled', 'Output');
-CREATE TYPE field_type_enum AS ENUM ('Text', 'Date', 'Number')
-CREATE TYPE event_type_enum AS ENUM ('EconomicEvent')
+CREATE TYPE recipe_template_type_enum AS ENUM ('FDA', 'Custom');
+CREATE TYPE event_type_enum AS ENUM ('EconomicEvent');
+CREATE TYPE action_type_enum AS ENUM ('Cite', 'Modify', 'Produce', 'Consume', 'Transfer', 'Use', 'Load', 'Unload');
+CREATE TYPE role_type_enum AS ENUM ('Input', 'Output');
+CREATE TYPE field_value_enum AS ENUM ('product', 'quantity', 'hasPointInTime', 'atLocation');
+CREATE TYPE field_type_enum AS ENUM ('Text', 'Date', 'Number', 'Select');
 
 --Company Table
 CREATE TABLE IF NOT EXISTS agents (
@@ -43,8 +42,42 @@ CREATE TABLE IF NOT EXISTS economic_resources (
     reference_number SERIAL
 );
 
+--ProcessTemplates
+CREATE TABLE IF NOT EXISTS recipe_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    recipe_template_type recipe_template_type_enum NOT NULL
+);
 
---Recipe Process Map Table
+--ProcessTemplateAccess
+CREATE TABLE IF NOT EXISTS recipe_templates_access (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id UUID NOT NULL REFERENCES agents(id),
+    recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id)
+);
+
+--ProcessFlowTemplates
+CREATE TABLE IF NOT EXISTS recipe_flow_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
+    event_type event_type_enum NOT NULL,
+    role_type role_type_enum NOT NULL
+);
+
+--ProcessFlowTemplateDataFields
+CREATE TABLE IF NOT EXISTS recipe_flow_template_data_fields (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_flow_template_id UUID NOT NULL REFERENCES recipe_flow_templates(id),
+    field_value field_value_enum NOT NULL,
+    field TEXT NOT NULL,
+    field_type field_type_enum NOT NULL,
+    note TEXT,
+    required BOOLEAN NOT NULL,
+    query TEXT,
+    default_value TEXT  
+);
+
+--Process Map
 CREATE TABLE IF NOT EXISTS recipes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     agent_id UUID NOT NULL REFERENCES agents(id),
@@ -53,79 +86,58 @@ CREATE TABLE IF NOT EXISTS recipes (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
---Recipe Process Map Resources Table
+--Process Map Products
 CREATE TABLE IF NOT EXISTS recipe_resources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     recipe_id UUID NOT NULL REFERENCES recipes(id),
-    resource_specification_id NOT NULL UUID REFERENCES resource_specifications(id)
+    resource_specification_id UUID NOT NULL REFERENCES resource_specifications(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
---Recipe Process Table
+--Process
 CREATE TABLE IF NOT EXISTS processes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
     recipe_id UUID NOT NULL REFERENCES recipes(id),
     name TEXT NOT NULL,
     note TEXT,
     output_of UUID REFERENCES processes(id),
-    template_id UUID NOT NULL REFERENCES templates(id)
-);
-
---Recipe Process Events
-CREATE TABLE IF NOT EXISTS recipe_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    process_id UUID REFERENCES processes(id),
-    action action_type_enum NOT NULL,
-    role role_enum NOT NULL,
-    resource_specification_id UUID REFERENCES resource_specifications(id),
-    economic_resource_id UUID REFERENCES economic_resources(id),
-    note TEXT,
-    is_commitment BOOLEAN,
-    commitment_status TEXT,
-    triggers_commitment BOOLEAN,
-    fulfills_commitment_id UUID REFERENCES recipe_events(id),
-    location TEXT NOT NULL,
+    template_id UUID NOT NULL REFERENCES recipe_templates(id),  -- Updated from templates to recipe_templates
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-
---Process Execution
-CREATE TABLE IF NOT EXISTS economic_events (
+--ProcessFlow
+CREATE TABLE IF NOT EXISTS process_flow (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    recipe_event_id UUID REFERENCES recipe_events(id),
-    provider_id UUID REFERENCES agents(id),
-    receiver_id UUID REFERENCES agents(id),
-    note TEXT,
-    resource_specification_id UUID REFERENCES resource_specifications(id),
-    resource_inventoried_as UUID REFERENCES economic_resources(id),
-    resource_quantity INTEGER NOT NULL,
-    to_resource_specification_id UUID REFERENCES resource_specifications(id),
-    to_unit_of_measure TEXT,
-    has_point_in_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
---Form Templates
-CREATE TABLE IF NOT EXISTS templates {
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL
-}
-
---DataEvents 
-CREATE TABLE IF NOT EXISTS data_events (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    template_id NOT NULL REFERENCES templates(id)
+    process_id UUID NOT NULL REFERENCES processes(id),
     event_type event_type_enum NOT NULL,
-    role role_enum NOT NULL,
-    action action_type_enum NOT NULL
+    action_type action_type_enum NOT NULL,
+    role role_type_enum NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
---DataFields 
-CREATE TABLE IF NOT EXISTS data_fields (
+--ProcessFlowDataFields
+CREATE TABLE IF NOT EXISTS process_flow_data_fields (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    data_event_id UUID NOT NULL REFERENCES data_events(id)
+    process_flow_id UUID NOT NULL REFERENCES process_flow(id),
+    field_value field_value_enum NOT NULL,
     field TEXT NOT NULL,
     field_type field_type_enum NOT NULL,
     note TEXT,
-    field_required BOOLEAN NOT NULL,
-    field_regulation_required BOOLEAN NOT NULL,
-    field_default_value TEXT
+    required BOOLEAN NOT NULL,
+    query TEXT,
+    default_value TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+--ProcessEvents
+CREATE TABLE IF NOT EXISTS process_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    process_flow_data_field_id UUID NOT NULL REFERENCES process_flow_data_fields(id),
+    query_value UUID,
+    value TEXT NOT NULL,
+    reference_number SERIAL,
+    provider UUID NOT NULL REFERENCES agents(id), 
+    receiver UUID NOT NULL REFERENCES agents(id), 
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

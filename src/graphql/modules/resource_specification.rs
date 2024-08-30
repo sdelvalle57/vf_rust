@@ -35,7 +35,7 @@ pub fn resource_specifications_by_agent(
     Ok(results)
 }
 
-pub fn resource_specifications_by_id(
+pub fn resource_specification_by_id(
     context: &Context,
     resource_specification_id: Uuid,
 ) -> FieldResult<ResourceSpecification> {

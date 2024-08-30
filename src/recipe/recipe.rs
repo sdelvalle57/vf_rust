@@ -26,6 +26,7 @@ pub struct RecipeResource {
     pub id: Uuid,
     pub recipe_id: Uuid,
     pub resource_specification_id: Uuid,
+    pub created_at: NaiveDateTime
 }
 
 #[derive(Insertable)]
