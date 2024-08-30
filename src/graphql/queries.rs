@@ -3,7 +3,8 @@ use crate::{
 };
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
-use super::modules::{agent, economic_resource, recipe, resource_specification};
+
+use super::modules::{common::{agent, economic_resource, resource_specification}, recipe::recipe};
 
 
 pub struct QueryRoot;

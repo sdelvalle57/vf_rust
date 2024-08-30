@@ -1,4 +1,3 @@
-use super::modules::{agent, economic_resource, recipe, resource_specification};
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
@@ -10,6 +9,8 @@ use crate::{
     graphql::context::Context,
     recipe::recipe::RecipeWithResources,
 };
+
+use super::modules::{common::{agent, economic_resource, resource_specification}, recipe::recipe};
 
 pub struct MutationRoot;
 

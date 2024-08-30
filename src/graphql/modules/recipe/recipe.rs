@@ -1,11 +1,11 @@
 use crate::{
-    common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes}, graphql::context::Context, recipe::recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources}
+    common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes}, graphql::{context::Context, modules::common::resource_specification::resource_specification_by_id}, recipe::recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources}
 };
 use diesel::prelude::*;
 use juniper::FieldResult;
 use uuid::Uuid;
 
-use super::resource_specification::resource_specification_by_id;
+
 
 
 /** Queries */

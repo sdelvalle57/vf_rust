@@ -11,7 +11,7 @@ use diesel::{
 use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
-use crate::db::schema::recipe_flow_templates;
+use crate::db::schema::{recipe_flow_templates, sql_types::ActionTypeEnum};
 
 use crate::db::schema::sql_types::EventTypeEnum;
 use crate::db::schema::sql_types::RoleTypeEnum;
@@ -71,6 +71,54 @@ impl FromSql<RoleTypeEnum, Pg> for RoleType {
 
 
 
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
+#[diesel(sql_type = ActionTypeEnum)]
+pub enum ActionType {
+    Cite,
+    Modify,
+    Produce,
+    Consume,
+    Transfer,
+    Use,
+    Load,
+    Unload
+}
+
+impl ToSql<ActionTypeEnum, Pg> for ActionType {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
+        match *self {
+            ActionType::Cite => out.write_all(b"Cite")?,
+            ActionType::Modify => out.write_all(b"Modify")?,
+            ActionType::Produce => out.write_all(b"Produce")?,
+            ActionType::Consume => out.write_all(b"Consume")?,
+            ActionType::Transfer => out.write_all(b"Transfer")?,
+            ActionType::Use => out.write_all(b"Use")?,
+            ActionType::Load => out.write_all(b"Load")?,
+            ActionType::Unload => out.write_all(b"Unload")?,
+        }
+        Ok(IsNull::No)
+    }
+}
+
+impl FromSql<ActionTypeEnum, Pg> for ActionType {
+    fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
+        match bytes.as_bytes() {
+            b"Cite" => Ok(ActionType::Cite),
+            b"Modify" => Ok(ActionType::Modify),
+            b"Produce" => Ok(ActionType::Produce),
+            b"Consume" => Ok(ActionType::Consume),
+            b"Transfer" => Ok(ActionType::Transfer),
+            b"Use" => Ok(ActionType::Use),
+            b"Load" => Ok(ActionType::Load),
+            b"Unload" => Ok(ActionType::Unload),
+            _ => Err("Unrecognized enum variant".into()),
+        }
+    }
+}
+
+
+
+
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = recipe_flow_templates)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -79,27 +127,31 @@ pub struct RecipeFlowTemplate {
     pub id: Uuid,
     pub recipe_template_id: Uuid,
     pub event_type: EventType,
-    pub role_type: RoleType
+    pub role_type: RoleType,
+    pub action: ActionType
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_flow_templates)]
-pub struct NewRecipeTemplate<'a> {
+pub struct NewRecipeFlowTemplate<'a> {
     pub recipe_template_id: &'a Uuid,
     pub event_type: &'a EventType,
     pub role_type: &'a RoleType,
+    pub action: &'a ActionType,
 }
 
-impl<'a> NewRecipeTemplate<'a> {
+impl<'a> NewRecipeFlowTemplate<'a> {
     pub fn new(
         recipe_template_id: &'a Uuid,
         event_type: &'a EventType,
         role_type: &'a RoleType,
+        action: &'a ActionType,
     ) -> Self {
-        NewRecipeTemplate {
+        NewRecipeFlowTemplate {
             recipe_template_id,
             event_type,
-            role_type
+            role_type,
+            action
         }
     }
 }

@@ -147,12 +147,14 @@ diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::EventTypeEnum;
     use super::sql_types::RoleTypeEnum;
+    use super::sql_types::ActionTypeEnum;
 
     recipe_flow_templates (id) {
         id -> Uuid,
         recipe_template_id -> Uuid,
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
+        action -> ActionTypeEnum,
     }
 }
 
