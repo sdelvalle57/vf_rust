@@ -15,6 +15,8 @@ use crate::db::schema::recipe_templates;
 
 use crate::db::schema::sql_types::RecipeTemplateTypeEnum;
 
+use super::recipe_flow_template::RecipeFlowTemplateWithDataFields;
+
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = RecipeTemplateTypeEnum)]
@@ -70,5 +72,28 @@ impl<'a> NewRecipeTemplate<'a> {
             name,
             recipe_template_type
         }
+    }
+}
+
+#[derive(juniper::GraphQLObject)]
+pub struct RecipeTemplateWithRecipeFlows {
+    pub id: Uuid,
+    pub name: String,
+    pub recipe_template_type: RecipeTemplateType,
+    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
+}
+
+impl RecipeTemplateWithRecipeFlows {
+    pub fn new(recipe_template: & RecipeTemplate) -> Self {
+        RecipeTemplateWithRecipeFlows {
+            id: recipe_template.id,
+            name: recipe_template.name.clone(),
+            recipe_template_type: recipe_template.recipe_template_type.clone(),
+            recipe_flows: Vec::new()
+        }
+    }
+
+    pub fn add_recipe_flow(&mut self, recipe_flow: RecipeFlowTemplateWithDataFields) {
+        self.recipe_flows.push(recipe_flow)
     }
 }

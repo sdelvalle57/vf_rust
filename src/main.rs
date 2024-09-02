@@ -2,6 +2,7 @@ mod db;
 mod graphql;
 mod recipe;
 mod common;
+mod templates;
 
 use crate::db::conn::establish_connection_pool;
 use crate::graphql::handler::start_server;

@@ -1,21 +1,19 @@
 use std::io::Write;
 
 use diesel::{
-    deserialize::{self, FromSql, FromSqlRow}, 
-    expression::AsExpression, 
-    pg::{Pg, PgValue}, 
-    serialize::{self, IsNull, Output, ToSql}, 
-    Insertable, 
-    Queryable
+    deserialize::{self, FromSql, FromSqlRow},
+    expression::AsExpression,
+    pg::{Pg, PgValue},
+    serialize::{self, IsNull, Output, ToSql},
+    Insertable, Queryable,
 };
 use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
 use crate::db::schema::recipe_flow_template_data_fields;
 
-use crate::db::schema::sql_types::FieldValueEnum;
 use crate::db::schema::sql_types::FieldTypeEnum;
-
+use crate::db::schema::sql_types::FieldValueEnum;
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = FieldValueEnum)]
@@ -23,7 +21,7 @@ pub enum FieldValue {
     Product,
     Quantity,
     HasPointInTime,
-    AtLocation
+    AtLocation,
 }
 
 impl ToSql<FieldValueEnum, Pg> for FieldValue {
@@ -50,14 +48,13 @@ impl FromSql<FieldValueEnum, Pg> for FieldValue {
     }
 }
 
-
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = FieldTypeEnum)]
 pub enum FieldType {
     Text,
     Date,
     Number,
-    Select
+    Select,
 }
 
 impl ToSql<FieldTypeEnum, Pg> for FieldType {
@@ -83,8 +80,6 @@ impl FromSql<FieldTypeEnum, Pg> for FieldType {
         }
     }
 }
-
-
 
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = recipe_flow_template_data_fields)]
@@ -134,7 +129,34 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
             note,
             required,
             query,
-            default_value
+            default_value,
         }
+    }
+}
+
+#[derive(juniper::GraphQLObject)]
+pub struct RecipeFlowTemplateDataFieldInput {
+    pub field_value: FieldValue,
+    pub field: String,
+    pub field_type: FieldType,
+    pub note: Option<String>,
+    pub required: bool,
+    pub query: Option<String>,
+    pub default_value: Option<String>,
+}
+
+impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
+    type Error = String; // Define your error type here
+
+    fn try_from(value: RecipeFlowTemplateDataField) -> Result<Self, Self::Error> {
+        Ok(RecipeFlowTemplateDataFieldInput {
+            field_value: value.field_value,
+            field: value.field,
+            field_type: value.field_type,
+            note: value.note,
+            required: value.required,
+            query: value.query,
+            default_value: value.default_value,
+        })
     }
 }

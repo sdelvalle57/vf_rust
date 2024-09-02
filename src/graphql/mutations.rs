@@ -7,10 +7,10 @@ use crate::{
         resource_specification::{ResourceSpecification, ResourceType},
     },
     graphql::context::Context,
-    recipe::recipe::RecipeWithResources,
+    recipe::recipe::RecipeWithResources, templates::recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows},
 };
 
-use super::modules::{common::{agent, economic_resource, resource_specification}, recipe::recipe};
+use super::modules::{common::{agent, economic_resource, resource_specification}, recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}};
 
 pub struct MutationRoot;
 
@@ -65,16 +65,26 @@ impl MutationRoot {
         )
     }
 
-    /** Recipe */
-    fn create_recipe(
+    /** Recipe Templates */
+    fn create_recipe_template(
         context: &Context,
-        agent_id: Uuid,
         name: String,
-        note: Option<String>,
-        recipe_resources: Vec<Uuid>,
-    ) -> FieldResult<RecipeWithResources> {
-        recipe::create_recipe(&context, agent_id, name, note, recipe_resources)
+        recipe_template_type: RecipeTemplateType,
+        recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
+    ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
+        template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args)
     }
+
+    // /** Recipe */
+    // fn create_recipe(
+    //     context: &Context,
+    //     agent_id: Uuid,
+    //     name: String,
+    //     note: Option<String>,
+    //     recipe_resources: Vec<Uuid>,
+    // ) -> FieldResult<RecipeWithResources> {
+    //     recipe::create_recipe(&context, agent_id, name, note, recipe_resources)
+    // }
 
     // /** Process */
     // fn create_process(

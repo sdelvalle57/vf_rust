@@ -16,6 +16,8 @@ use crate::db::schema::{recipe_flow_templates, sql_types::ActionTypeEnum};
 use crate::db::schema::sql_types::EventTypeEnum;
 use crate::db::schema::sql_types::RoleTypeEnum;
 
+use super::recipe_flow_template_data_field::{RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput};
+
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = EventTypeEnum)]
@@ -42,7 +44,7 @@ impl FromSql<EventTypeEnum, Pg> for EventType {
 }
 
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone, Copy)]
 #[diesel(sql_type = RoleTypeEnum)]
 pub enum RoleType {
     Input,
@@ -71,7 +73,7 @@ impl FromSql<RoleTypeEnum, Pg> for RoleType {
 
 
 
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone, Copy)]
 #[diesel(sql_type = ActionTypeEnum)]
 pub enum ActionType {
     Cite,
@@ -153,5 +155,33 @@ impl<'a> NewRecipeFlowTemplate<'a> {
             role_type,
             action
         }
+    }
+}
+
+
+#[derive(juniper::GraphQLObject)]
+pub struct RecipeFlowTemplateWithDataFields {
+    pub id: Uuid,
+    pub recipe_template_id: Uuid,
+    pub event_type: EventType,
+    pub role_type: RoleType,
+    pub action: ActionType,
+    pub data_fields: Vec<RecipeFlowTemplateDataFieldInput>
+}
+
+impl RecipeFlowTemplateWithDataFields {
+    pub fn new(recipe_flow_template: &RecipeFlowTemplate) -> Self {
+        RecipeFlowTemplateWithDataFields {
+            id: recipe_flow_template.id,
+            recipe_template_id: recipe_flow_template.recipe_template_id,
+            event_type: recipe_flow_template.event_type.clone(),
+            role_type: recipe_flow_template.role_type,
+            action: recipe_flow_template.action,
+            data_fields: Vec::new()
+        }
+    }
+
+    pub fn add_data_field(&mut self, data_field: RecipeFlowTemplateDataFieldInput) {
+        self.data_fields.push(data_field);
     }
 }
