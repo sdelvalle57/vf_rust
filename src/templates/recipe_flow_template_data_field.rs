@@ -22,6 +22,7 @@ pub enum FieldValue {
     Quantity,
     HasPointInTime,
     AtLocation,
+    Note
 }
 
 impl ToSql<FieldValueEnum, Pg> for FieldValue {
@@ -31,6 +32,7 @@ impl ToSql<FieldValueEnum, Pg> for FieldValue {
             FieldValue::Quantity => out.write_all(b"quantity")?,
             FieldValue::HasPointInTime => out.write_all(b"hasPointInTime")?,
             FieldValue::AtLocation => out.write_all(b"atLocation")?,
+            FieldValue::Note => out.write_all(b"note")?,
         }
         Ok(IsNull::No)
     }
@@ -43,6 +45,7 @@ impl FromSql<FieldValueEnum, Pg> for FieldValue {
             b"quantity" => Ok(FieldValue::Quantity),
             b"hasPointInTime" => Ok(FieldValue::HasPointInTime),
             b"atLocation" => Ok(FieldValue::AtLocation),
+            b"note" => Ok(FieldValue::Note),
             _ => Err("Unrecognized enum variant".into()),
         }
     }
@@ -106,7 +109,7 @@ pub struct NewRecipeFlowTemplateDataField<'a> {
     pub field_type: &'a FieldType,
     pub note: Option<&'a str>,
     pub required: &'a bool,
-    pub query: Option<&'a str>,
+    pub query: Option<&'a Uuid>,
     pub default_value: Option<&'a str>,
 }
 
@@ -118,7 +121,7 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
         field_type: &'a FieldType,
         note: Option<&'a str>,
         required: &'a bool,
-        query: Option<&'a str>,
+        query: Option<&'a Uuid>,
         default_value: Option<&'a str>,
     ) -> Self {
         NewRecipeFlowTemplateDataField {
@@ -141,7 +144,6 @@ pub struct RecipeFlowTemplateDataFieldInput {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub query: Option<String>,
     pub default_value: Option<String>,
 }
 
@@ -155,8 +157,8 @@ impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
             field_type: value.field_type,
             note: value.note,
             required: value.required,
-            query: value.query,
             default_value: value.default_value,
         })
     }
 }
+

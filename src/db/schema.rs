@@ -18,6 +18,10 @@ pub mod sql_types {
     pub struct FieldValueEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "query_type_enum"))]
+    pub struct QueryTypeEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "recipe_template_type_enum"))]
     pub struct RecipeTemplateTypeEnum;
 
@@ -93,6 +97,20 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+    use super::sql_types::QueryTypeEnum;
+
+    process_flow_data_field_queries (id) {
+        id -> Uuid,
+        query_type -> QueryTypeEnum,
+        table_name -> Text,
+        fields -> Jsonb,
+        conditions -> Nullable<Jsonb>,
+        additional_clauses -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
     use super::sql_types::FieldValueEnum;
     use super::sql_types::FieldTypeEnum;
 
@@ -104,7 +122,7 @@ diesel::table! {
         field_type -> FieldTypeEnum,
         note -> Nullable<Text>,
         required -> Bool,
-        query -> Nullable<Text>,
+        query -> Nullable<Uuid>,
         default_value -> Nullable<Text>,
         created_at -> Timestamp,
     }
@@ -138,8 +156,8 @@ diesel::table! {
         field_type -> FieldTypeEnum,
         note -> Nullable<Text>,
         required -> Bool,
-        query -> Nullable<Text>,
         default_value -> Nullable<Text>,
+        query -> Nullable<Uuid>,
     }
 }
 
@@ -221,7 +239,9 @@ diesel::joinable!(economic_resources -> resource_specifications (resource_specif
 diesel::joinable!(process_events -> process_flow_data_fields (process_flow_data_field_id));
 diesel::joinable!(process_flow -> processes (process_id));
 diesel::joinable!(process_flow_data_fields -> process_flow (process_flow_id));
+diesel::joinable!(process_flow_data_fields -> process_flow_data_field_queries (query));
 diesel::joinable!(processes -> recipes (recipe_id));
+diesel::joinable!(recipe_flow_template_data_fields -> process_flow_data_field_queries (query));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));
@@ -236,6 +256,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     economic_resources,
     process_events,
     process_flow,
+    process_flow_data_field_queries,
     process_flow_data_fields,
     processes,
     recipe_flow_template_data_fields,

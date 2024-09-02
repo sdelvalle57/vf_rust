@@ -5,7 +5,7 @@ mod common;
 mod templates;
 
 use crate::db::conn::establish_connection_pool;
-use crate::graphql::handler::start_server;
+use crate::graphql::handler;
 use std::sync::Arc;
 
 #[actix_web::main]
@@ -14,5 +14,5 @@ async fn main() -> std::io::Result<()> {
     let pool = Arc::new(establish_connection_pool());
 
     // Start the GraphQL server with the connection pool
-    start_server(pool).await
+    handler::start_server(pool).await
 }

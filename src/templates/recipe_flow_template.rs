@@ -16,7 +16,7 @@ use crate::db::schema::{recipe_flow_templates, sql_types::ActionTypeEnum};
 use crate::db::schema::sql_types::EventTypeEnum;
 use crate::db::schema::sql_types::RoleTypeEnum;
 
-use super::recipe_flow_template_data_field::{RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput};
+use super::recipe_flow_template_data_field::RecipeFlowTemplateDataFieldInput;
 
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]

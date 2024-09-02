@@ -15,7 +15,8 @@ use crate::{
     },
 };
 use diesel::prelude::*;
-use juniper::{FieldError, FieldResult};
+use juniper::{FieldError, FieldResult, ParseScalarValue};
+use uuid::Uuid;
 
 #[derive(juniper::GraphQLInputObject)]
 pub struct RecipeFlowTemplateArg {
@@ -32,7 +33,6 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub query: Option<String>,
     pub default_value: Option<String>,
 }
 
@@ -79,6 +79,10 @@ pub fn create_recipe_template(
 
         // Iterate over each data field and add it to the recipe flow
         for rd in r.data_fields {
+            
+            //TODO: build and insert query
+            let query  = Uuid::new_v4();
+            
             let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                 &inserted_recipe_flow_template.id,
                 &rd.field_value,
@@ -86,9 +90,14 @@ pub fn create_recipe_template(
                 &rd.field_type,
                 rd.note.as_deref(),
                 &rd.required,
-                rd.query.as_deref(),
+                Some(&query),
                 rd.default_value.as_deref(),
             );
+
+            //Uuid, Uuid, FieldValue,     String, FieldType,    Option<String>, bool, Option<String>, Option<String>
+            //Uuid, Uuid, FieldValueEnum, Text,   FieldTypeEnum, Nullable<Text>, Bool, Nullable<Text>, Nullable<Uuid>
+
+            //TODO: fix this
             let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
                 diesel::insert_into(recipe_flow_template_data_fields::table)
                     .values(&new_recipe_flow_template_data_field)

@@ -4,8 +4,9 @@ CREATE TYPE recipe_template_type_enum AS ENUM ('FDA', 'Custom');
 CREATE TYPE event_type_enum AS ENUM ('EconomicEvent');
 CREATE TYPE action_type_enum AS ENUM ('Cite', 'Modify', 'Produce', 'Consume', 'Transfer', 'Use', 'Load', 'Unload');
 CREATE TYPE role_type_enum AS ENUM ('Input', 'Output');
-CREATE TYPE field_value_enum AS ENUM ('product', 'quantity', 'hasPointInTime', 'atLocation');
+CREATE TYPE field_value_enum AS ENUM ('product', 'quantity', 'hasPointInTime', 'atLocation', 'note');
 CREATE TYPE field_type_enum AS ENUM ('Text', 'Date', 'Number', 'Select');
+CREATE TYPE query_type_enum AS ENUM('Select');
 
 --Company Table
 CREATE TABLE IF NOT EXISTS agents (
@@ -61,8 +62,18 @@ CREATE TABLE IF NOT EXISTS recipe_flow_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
     event_type event_type_enum NOT NULL,
-    role_type role_type_enum NOT NULL
+    role_type role_type_enum NOT NULL,
     action action_type_enum NOT NULL
+);
+
+-- ProcessFlowDataFieldQueries
+CREATE TABLE IF NOT EXISTS process_flow_data_field_queries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    query_type query_type_enum NOT NULL,
+    table_name TEXT NOT NULL,
+    fields JSONB NOT NULL,
+    conditions JSONB,
+    additional_clauses TEXT
 );
 
 --ProcessFlowTemplateDataFields
@@ -74,7 +85,7 @@ CREATE TABLE IF NOT EXISTS recipe_flow_template_data_fields (
     field_type field_type_enum NOT NULL,
     note TEXT,
     required BOOLEAN NOT NULL,
-    query TEXT,
+    query UUID REFERENCES process_flow_data_field_queries(id),
     default_value TEXT  
 );
 
@@ -117,7 +128,11 @@ CREATE TABLE IF NOT EXISTS process_flow (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
---ProcessFlowDataFields
+
+
+
+
+-- ProcessFlowDataFields is created after ProcessFlowDataFieldQueries
 CREATE TABLE IF NOT EXISTS process_flow_data_fields (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     process_flow_id UUID NOT NULL REFERENCES process_flow(id),
@@ -126,7 +141,7 @@ CREATE TABLE IF NOT EXISTS process_flow_data_fields (
     field_type field_type_enum NOT NULL,
     note TEXT,
     required BOOLEAN NOT NULL,
-    query TEXT,
+    query UUID REFERENCES process_flow_data_field_queries(id),
     default_value TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -142,3 +157,5 @@ CREATE TABLE IF NOT EXISTS process_events (
     receiver UUID NOT NULL REFERENCES agents(id), 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+
