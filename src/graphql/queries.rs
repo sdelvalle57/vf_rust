@@ -76,6 +76,14 @@ impl QueryRoot {
         template::get_template_by_id(context, template_id)
     }
 
+    /** Recipe Template Access */
+    fn get_templates_access_by_agent(
+        context: &Context,
+        agent_id: Uuid,
+    ) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
+        template::get_templates_access_by_agent(context, agent_id)
+    }
+
     /*** Recipe */
     fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWithResources> {
         recipe::recipe_by_id(&context, recipe_id)

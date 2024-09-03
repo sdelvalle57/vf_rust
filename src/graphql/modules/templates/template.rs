@@ -1,5 +1,8 @@
 use crate::{
-    db::schema::{recipe_flow_template_data_fields, recipe_flow_templates, recipe_templates},
+    db::schema::{
+        recipe_flow_template_data_fields, recipe_flow_templates, recipe_templates,
+        recipe_templates_access,
+    },
     graphql::context::Context,
     templates::{
         recipe_flow_template::{
@@ -13,10 +16,12 @@ use crate::{
         recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
         },
+        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess},
     },
 };
 use diesel::prelude::*;
-use juniper::{FieldError, FieldResult};
+use diesel::result::Error as DieselError;
+use juniper::{graphql_value, FieldError, FieldResult};
 use uuid::Uuid;
 
 #[derive(juniper::GraphQLInputObject)]
@@ -69,7 +74,10 @@ fn get_recipe_flow_template_data_fields(
     Ok(recipe_flow_remplate_data_fields)
 }
 
-fn get_recipe_template_with_flows(context: &Context, recipe_template: RecipeTemplate) -> FieldResult<RecipeTemplateWithRecipeFlows> {
+fn get_recipe_template_with_flows(
+    context: &Context,
+    recipe_template: RecipeTemplate,
+) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
         .get()
@@ -85,16 +93,13 @@ fn get_recipe_template_with_flows(context: &Context, recipe_template: RecipeTemp
 
     for rft in recipe_flow_templates {
         //create new instance of RecipeFlowTemplateWithDataFields
-        let recipe_flow_remplate_data_fields =
-            get_recipe_flow_template_data_fields(&context, rft)?;
+        let recipe_flow_remplate_data_fields = get_recipe_flow_template_data_fields(&context, rft)?;
 
         recipe_template_with_recipe_flows.add_recipe_flow(recipe_flow_remplate_data_fields)
-    };
+    }
 
     Ok(recipe_template_with_recipe_flows)
-
 }
-
 
 pub fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
     let conn = &mut context
@@ -118,7 +123,10 @@ pub fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRec
     Ok(res)
 }
 
-pub fn get_template_by_id(context: &Context, template_id: Uuid) -> FieldResult<RecipeTemplateWithRecipeFlows> {
+pub fn get_template_by_id(
+    context: &Context,
+    template_id: Uuid,
+) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
         .get()
@@ -129,6 +137,30 @@ pub fn get_template_by_id(context: &Context, template_id: Uuid) -> FieldResult<R
         .first::<RecipeTemplate>(conn)?;
 
     let res = get_recipe_template_with_flows(&context, recipe)?;
+
+    Ok(res)
+}
+
+pub fn get_templates_access_by_agent(
+    context: &Context,
+    agent_id: Uuid,
+) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let accesses: Vec<RecipeTemplateAccess> = recipe_templates_access::table
+        .filter(recipe_templates_access::agent_id.eq(agent_id))
+        .load::<RecipeTemplateAccess>(conn)?;
+
+    let mut res: Vec<RecipeTemplateWithRecipeFlows> = Vec::new();
+
+    for a in accesses {
+        let template_id = a.recipe_template_id;
+        let recipe = get_template_by_id(context, template_id)?;
+        res.push(recipe)
+    }
 
     Ok(res)
 }
@@ -182,7 +214,7 @@ pub fn create_recipe_template(
                 &rd.field,
                 &rd.field_type,
                 rd.note.as_deref(),
-                &rd.required
+                &rd.required,
             );
 
             let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
@@ -202,6 +234,39 @@ pub fn create_recipe_template(
         // Add the complete `recipe_flow_res` to the result
         res.add_recipe_flow(recipe_flow_res);
     }
+
+    Ok(res)
+}
+
+pub fn assign_template_to_agent(
+    context: &Context,
+    recipe_template_id: Uuid,
+    agent_id: Uuid,
+) -> FieldResult<RecipeTemplateAccess> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let existing_access: Result<RecipeTemplateAccess, DieselError> = recipe_templates_access::table
+        .filter(recipe_templates_access::recipe_template_id.eq(recipe_template_id))
+        .filter(recipe_templates_access::agent_id.eq(agent_id))
+        .first::<RecipeTemplateAccess>(conn);
+
+    // If it exists, return an error
+    if let Ok(_) = existing_access {
+        return Err(FieldError::new(
+            "Template access already exists for this agent.",
+            graphql_value!({ "code": "ALREADY_EXISTS" }),
+        ));
+    }
+
+    // If it doesn't exist, insert a new record
+    let new_access = NewRecipeTemplateAccess::new(&agent_id, &recipe_template_id);
+
+    let res: RecipeTemplateAccess = diesel::insert_into(recipe_templates_access::table)
+        .values(&new_access)
+        .get_result::<RecipeTemplateAccess>(conn)?;
 
     Ok(res)
 }

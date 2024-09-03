@@ -5,7 +5,7 @@ use crate::{
     common::{
         agent::Agent, economic_resource::EconomicResource,
         resource_specification::{ResourceSpecification, ResourceType},
-    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}
+    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
 };
 
 use super::modules::{common::{agent, economic_resource, resource_specification}, recipe::recipe::create_recipe, templates::template::{self, RecipeFlowTemplateArg}};
@@ -71,6 +71,15 @@ impl MutationRoot {
         recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
         template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args)
+    }
+
+    /** Recipe Template Access */
+    fn assign_template_to_agent(
+        context: &Context,
+        recipe_template_id: Uuid,
+        agent_id: Uuid,
+    ) -> FieldResult<RecipeTemplateAccess> {
+        template::assign_template_to_agent(context, recipe_template_id, agent_id)
     }
 
     /** Recipe */
