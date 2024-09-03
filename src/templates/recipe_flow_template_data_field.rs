@@ -96,9 +96,11 @@ pub struct RecipeFlowTemplateDataField {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub query: Option<String>,
     pub default_value: Option<String>,
+    pub query: Option<Uuid>,
 }
+
+
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_flow_template_data_fields)]

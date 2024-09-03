@@ -2,16 +2,14 @@ use crate::{
     db::schema::{recipe_flow_template_data_fields, recipe_flow_templates, recipe_templates},
     graphql::context::Context,
     templates::{
-        recipe_flow_template::{
+        query_builder::NewDBQuery, recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
-        },
-        recipe_flow_template_data_field::{
+        }, recipe_flow_template_data_field::{
             FieldType, FieldValue, NewRecipeFlowTemplateDataField, RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
-        },
-        recipe_template::{
+        }, recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
-        },
+        }
     },
 };
 use diesel::prelude::*;
@@ -82,6 +80,8 @@ pub fn create_recipe_template(
             
             //TODO: build and insert query
             let query  = Uuid::new_v4();
+
+            let query = NewDBQuery::build(&rd);
             
             let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                 &inserted_recipe_flow_template.id,
@@ -90,17 +90,13 @@ pub fn create_recipe_template(
                 &rd.field_type,
                 rd.note.as_deref(),
                 &rd.required,
-                Some(&query),
+                None,
                 rd.default_value.as_deref(),
             );
 
-            //Uuid, Uuid, FieldValue,     String, FieldType,    Option<String>, bool, Option<String>, Option<String>
-            //Uuid, Uuid, FieldValueEnum, Text,   FieldTypeEnum, Nullable<Text>, Bool, Nullable<Text>, Nullable<Uuid>
-
-            //TODO: fix this
             let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
                 diesel::insert_into(recipe_flow_template_data_fields::table)
-                    .values(&new_recipe_flow_template_data_field)
+                    .values(new_recipe_flow_template_data_field)
                     .get_result(conn)?;
 
             let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput =
