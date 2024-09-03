@@ -157,7 +157,6 @@ diesel::table! {
         note -> Nullable<Text>,
         required -> Bool,
         default_value -> Nullable<Text>,
-        query -> Nullable<Uuid>,
     }
 }
 
@@ -241,7 +240,6 @@ diesel::joinable!(process_flow -> processes (process_id));
 diesel::joinable!(process_flow_data_fields -> process_flow (process_flow_id));
 diesel::joinable!(process_flow_data_fields -> process_flow_data_field_queries (query));
 diesel::joinable!(processes -> recipes (recipe_id));
-diesel::joinable!(recipe_flow_template_data_fields -> process_flow_data_field_queries (query));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));

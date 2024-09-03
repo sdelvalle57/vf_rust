@@ -85,7 +85,6 @@ CREATE TABLE IF NOT EXISTS recipe_flow_template_data_fields (
     field_type field_type_enum NOT NULL,
     note TEXT,
     required BOOLEAN NOT NULL,
-    query UUID REFERENCES process_flow_data_field_queries(id),
     default_value TEXT  
 );
 

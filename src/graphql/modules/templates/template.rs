@@ -2,7 +2,7 @@ use crate::{
     db::schema::{recipe_flow_template_data_fields, recipe_flow_templates, recipe_templates},
     graphql::context::Context,
     templates::{
-        query_builder::NewDBQuery, recipe_flow_template::{
+        recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
         }, recipe_flow_template_data_field::{
@@ -13,8 +13,7 @@ use crate::{
     },
 };
 use diesel::prelude::*;
-use juniper::{FieldError, FieldResult, ParseScalarValue};
-use uuid::Uuid;
+use juniper::{FieldError, FieldResult};
 
 #[derive(juniper::GraphQLInputObject)]
 pub struct RecipeFlowTemplateArg {
@@ -33,6 +32,8 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub required: bool,
     pub default_value: Option<String>,
 }
+
+/**  */
 
 /** Mutations */
 pub fn create_recipe_template(
@@ -78,11 +79,6 @@ pub fn create_recipe_template(
         // Iterate over each data field and add it to the recipe flow
         for rd in r.data_fields {
             
-            //TODO: build and insert query
-            let query  = Uuid::new_v4();
-
-            let query = NewDBQuery::build(&rd);
-            
             let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                 &inserted_recipe_flow_template.id,
                 &rd.field_value,
@@ -90,7 +86,6 @@ pub fn create_recipe_template(
                 &rd.field_type,
                 rd.note.as_deref(),
                 &rd.required,
-                None,
                 rd.default_value.as_deref(),
             );
 

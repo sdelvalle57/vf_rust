@@ -97,7 +97,6 @@ pub struct RecipeFlowTemplateDataField {
     pub note: Option<String>,
     pub required: bool,
     pub default_value: Option<String>,
-    pub query: Option<Uuid>,
 }
 
 
@@ -111,7 +110,6 @@ pub struct NewRecipeFlowTemplateDataField<'a> {
     pub field_type: &'a FieldType,
     pub note: Option<&'a str>,
     pub required: &'a bool,
-    pub query: Option<&'a Uuid>,
     pub default_value: Option<&'a str>,
 }
 
@@ -123,7 +121,6 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
         field_type: &'a FieldType,
         note: Option<&'a str>,
         required: &'a bool,
-        query: Option<&'a Uuid>,
         default_value: Option<&'a str>,
     ) -> Self {
         NewRecipeFlowTemplateDataField {
@@ -133,7 +130,6 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
             field_type,
             note,
             required,
-            query,
             default_value,
         }
     }
