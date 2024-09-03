@@ -5,15 +5,19 @@ use crate::{
         recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
-        }, recipe_flow_template_data_field::{
-            FieldType, FieldValue, NewRecipeFlowTemplateDataField, RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
-        }, recipe_template::{
+        },
+        recipe_flow_template_data_field::{
+            FieldType, FieldValue, NewRecipeFlowTemplateDataField, RecipeFlowTemplateDataField,
+            RecipeFlowTemplateDataFieldInput,
+        },
+        recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
-        }
+        },
     },
 };
 use diesel::prelude::*;
 use juniper::{FieldError, FieldResult};
+use uuid::Uuid;
 
 #[derive(juniper::GraphQLInputObject)]
 pub struct RecipeFlowTemplateArg {
@@ -30,10 +34,104 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub default_value: Option<String>,
 }
 
-/**  */
+/** Queries */
+fn get_recipe_flow_template_data_fields(
+    context: &Context,
+    recipe_flow_template: RecipeFlowTemplate,
+) -> FieldResult<RecipeFlowTemplateWithDataFields> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let mut recipe_flow_remplate_data_fields =
+        RecipeFlowTemplateWithDataFields::new(&recipe_flow_template);
+
+    //get recipe flow template data fields by recipe flow template id
+    let recipe_flow_template_data_fields: Vec<RecipeFlowTemplateDataField> =
+        recipe_flow_template_data_fields::table
+            .filter(
+                recipe_flow_template_data_fields::recipe_flow_template_id
+                    .eq(recipe_flow_template.id),
+            )
+            .load::<RecipeFlowTemplateDataField>(conn)?;
+
+    for rftdf in recipe_flow_template_data_fields {
+        let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput = rftdf
+            .try_into()
+            .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
+
+        recipe_flow_remplate_data_fields.add_data_field(recipe_flow_template_data_field_input);
+    }
+
+    Ok(recipe_flow_remplate_data_fields)
+}
+
+fn get_recipe_template_with_flows(context: &Context, recipe_template: RecipeTemplate) -> FieldResult<RecipeTemplateWithRecipeFlows> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let mut recipe_template_with_recipe_flows: RecipeTemplateWithRecipeFlows =
+        RecipeTemplateWithRecipeFlows::new(&recipe_template);
+
+    //get recipe flow templates by recipe template id
+    let recipe_flow_templates: Vec<RecipeFlowTemplate> = recipe_flow_templates::table
+        .filter(recipe_flow_templates::recipe_template_id.eq(recipe_template.id))
+        .load::<RecipeFlowTemplate>(conn)?;
+
+    for rft in recipe_flow_templates {
+        //create new instance of RecipeFlowTemplateWithDataFields
+        let recipe_flow_remplate_data_fields =
+            get_recipe_flow_template_data_fields(&context, rft)?;
+
+        recipe_template_with_recipe_flows.add_recipe_flow(recipe_flow_remplate_data_fields)
+    };
+
+    Ok(recipe_template_with_recipe_flows)
+
+}
+
+
+pub fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let mut res: Vec<RecipeTemplateWithRecipeFlows> = Vec::new();
+
+    //Get all recipe templates
+    let recipe_templates: Vec<RecipeTemplate> =
+        recipe_templates::table.load::<RecipeTemplate>(conn)?;
+
+    for rt in recipe_templates {
+        //create instance of RecipeTemplateWithRecipeFlows
+        let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, rt)?;
+
+        res.push(recipe_template_with_recipe_flows);
+    }
+
+    Ok(res)
+}
+
+pub fn get_template_by_id(context: &Context, template_id: Uuid) -> FieldResult<RecipeTemplateWithRecipeFlows> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let recipe: RecipeTemplate = recipe_templates::table
+        .filter(recipe_templates::id.eq(template_id))
+        .first::<RecipeTemplate>(conn)?;
+
+    let res = get_recipe_template_with_flows(&context, recipe)?;
+
+    Ok(res)
+}
 
 /** Mutations */
 pub fn create_recipe_template(
@@ -78,15 +176,13 @@ pub fn create_recipe_template(
 
         // Iterate over each data field and add it to the recipe flow
         for rd in r.data_fields {
-            
             let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                 &inserted_recipe_flow_template.id,
                 &rd.field_value,
                 &rd.field,
                 &rd.field_type,
                 rd.note.as_deref(),
-                &rd.required,
-                rd.default_value.as_deref(),
+                &rd.required
             );
 
             let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
@@ -98,7 +194,7 @@ pub fn create_recipe_template(
                 inserted_recipe_flow_template_data_field
                     .try_into()
                     .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
-                
+
             // Add the data field to the recipe flow
             recipe_flow_res.add_data_field(recipe_flow_template_data_field_input);
         }

@@ -96,7 +96,6 @@ pub struct RecipeFlowTemplateDataField {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub default_value: Option<String>,
 }
 
 
@@ -110,7 +109,6 @@ pub struct NewRecipeFlowTemplateDataField<'a> {
     pub field_type: &'a FieldType,
     pub note: Option<&'a str>,
     pub required: &'a bool,
-    pub default_value: Option<&'a str>,
 }
 
 impl<'a> NewRecipeFlowTemplateDataField<'a> {
@@ -121,7 +119,6 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
         field_type: &'a FieldType,
         note: Option<&'a str>,
         required: &'a bool,
-        default_value: Option<&'a str>,
     ) -> Self {
         NewRecipeFlowTemplateDataField {
             recipe_flow_template_id,
@@ -130,7 +127,6 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
             field_type,
             note,
             required,
-            default_value,
         }
     }
 }
@@ -142,7 +138,6 @@ pub struct RecipeFlowTemplateDataFieldInput {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub default_value: Option<String>,
 }
 
 impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
@@ -155,7 +150,6 @@ impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
             field_type: value.field_type,
             note: value.note,
             required: value.required,
-            default_value: value.default_value,
         })
     }
 }

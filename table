@@ -84,8 +84,7 @@ CREATE TABLE IF NOT EXISTS recipe_flow_template_data_fields (
     field TEXT NOT NULL,
     field_type field_type_enum NOT NULL,
     note TEXT,
-    required BOOLEAN NOT NULL,
-    default_value TEXT  
+    required BOOLEAN NOT NULL
 );
 
 --Process Map
@@ -126,9 +125,6 @@ CREATE TABLE IF NOT EXISTS process_flow (
     role role_type_enum NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-
-
 
 
 -- ProcessFlowDataFields is created after ProcessFlowDataFieldQueries

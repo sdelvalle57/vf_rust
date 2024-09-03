@@ -156,7 +156,6 @@ diesel::table! {
         field_type -> FieldTypeEnum,
         note -> Nullable<Text>,
         required -> Bool,
-        default_value -> Nullable<Text>,
     }
 }
 
