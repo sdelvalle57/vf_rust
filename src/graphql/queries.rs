@@ -1,5 +1,6 @@
 use crate::{
     common::{
+        location::Location,
         agent::Agent,
         economic_resource::{EconomicResource, EconomicResourceWithSpec},
         resource_specification::ResourceSpecification,
@@ -12,7 +13,7 @@ use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
 use super::modules::{
-    common::{agent, economic_resource, resource_specification},
+    common::{agent, economic_resource, location, resource_specification},
     recipe::recipe,
     templates::template,
 };
@@ -87,6 +88,11 @@ impl QueryRoot {
     /*** Recipe */
     fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWithResources> {
         recipe::recipe_by_id(&context, recipe_id)
+    }
+
+    /** Locations */
+    fn locations_by_agent(context: &Context, agent_id: Uuid) -> FieldResult<Vec<Location>> {
+        location::locations_by_agent(&context, agent_id)
     }
 
     fn recipes_by_agent(

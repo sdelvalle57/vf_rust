@@ -10,16 +10,12 @@ pub mod sql_types {
     pub struct EventTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "field_class_enum"))]
+    pub struct FieldClassEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "field_type_enum"))]
     pub struct FieldTypeEnum;
-
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "field_value_enum"))]
-    pub struct FieldValueEnum;
-
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "query_type_enum"))]
-    pub struct QueryTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "recipe_template_type_enum"))]
@@ -67,95 +63,48 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
 
-    process_events (id) {
+    locations (id) {
         id -> Uuid,
-        process_flow_data_field_id -> Uuid,
-        query_value -> Nullable<Uuid>,
-        value -> Text,
-        reference_number -> Int4,
-        provider -> Uuid,
-        receiver -> Uuid,
-        created_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::EventTypeEnum;
-    use super::sql_types::ActionTypeEnum;
-    use super::sql_types::RoleTypeEnum;
-
-    process_flow (id) {
-        id -> Uuid,
-        process_id -> Uuid,
-        event_type -> EventTypeEnum,
-        action_type -> ActionTypeEnum,
-        role -> RoleTypeEnum,
-        created_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::QueryTypeEnum;
-
-    process_flow_data_field_queries (id) {
-        id -> Uuid,
-        query_type -> QueryTypeEnum,
-        table_name -> Text,
-        fields -> Jsonb,
-        conditions -> Nullable<Jsonb>,
-        additional_clauses -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::FieldValueEnum;
-    use super::sql_types::FieldTypeEnum;
-
-    process_flow_data_fields (id) {
-        id -> Uuid,
-        process_flow_id -> Uuid,
-        field_value -> FieldValueEnum,
-        field -> Text,
-        field_type -> FieldTypeEnum,
-        note -> Nullable<Text>,
-        required -> Bool,
-        query -> Nullable<Uuid>,
-        default_value -> Nullable<Text>,
-        created_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-
-    processes (id) {
-        id -> Uuid,
-        recipe_template_id -> Uuid,
-        recipe_id -> Uuid,
+        agent_id -> Uuid,
         name -> Text,
-        note -> Nullable<Text>,
-        output_of -> Nullable<Uuid>,
-        template_id -> Uuid,
-        created_at -> Timestamp,
+        value -> Text,
     }
 }
 
 diesel::table! {
     use diesel::sql_types::*;
-    use super::sql_types::FieldValueEnum;
+
+    lot_codes (id) {
+        id -> Uuid,
+        agent_id -> Uuid,
+        current_lot_code -> Int4,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::FieldClassEnum;
     use super::sql_types::FieldTypeEnum;
 
     recipe_flow_template_data_fields (id) {
         id -> Uuid,
         recipe_flow_template_id -> Uuid,
-        field_value -> FieldValueEnum,
+        field_class -> FieldClassEnum,
         field -> Text,
         field_type -> FieldTypeEnum,
         note -> Nullable<Text>,
         required -> Bool,
+        field_identifier -> Text,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+
+    recipe_flow_template_visibility_fields (id) {
+        id -> Uuid,
+        recipe_flow_template_id -> Uuid,
+        field_id -> Uuid,
     }
 }
 
@@ -171,6 +120,35 @@ diesel::table! {
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
         action -> ActionTypeEnum,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::EventTypeEnum;
+    use super::sql_types::RoleTypeEnum;
+    use super::sql_types::ActionTypeEnum;
+
+    recipe_process_flows (id) {
+        id -> Uuid,
+        recipe_process_id -> Uuid,
+        recipe_flow_template_id -> Uuid,
+        event_type -> EventTypeEnum,
+        role_type -> RoleTypeEnum,
+        action -> ActionTypeEnum,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::RecipeTemplateTypeEnum;
+
+    recipe_processes (id) {
+        id -> Uuid,
+        recipe_id -> Uuid,
+        recipe_template_id -> Nullable<Uuid>,
+        name -> Text,
+        recipe_type -> RecipeTemplateTypeEnum,
     }
 }
 
@@ -234,13 +212,16 @@ diesel::table! {
 }
 
 diesel::joinable!(economic_resources -> resource_specifications (resource_specification_id));
-diesel::joinable!(process_events -> process_flow_data_fields (process_flow_data_field_id));
-diesel::joinable!(process_flow -> processes (process_id));
-diesel::joinable!(process_flow_data_fields -> process_flow (process_flow_id));
-diesel::joinable!(process_flow_data_fields -> process_flow_data_field_queries (query));
-diesel::joinable!(processes -> recipes (recipe_id));
+diesel::joinable!(locations -> agents (agent_id));
+diesel::joinable!(lot_codes -> agents (agent_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
+diesel::joinable!(recipe_flow_template_visibility_fields -> recipe_flow_template_data_fields (field_id));
+diesel::joinable!(recipe_flow_template_visibility_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
+diesel::joinable!(recipe_process_flows -> recipe_flow_templates (recipe_flow_template_id));
+diesel::joinable!(recipe_process_flows -> recipe_processes (recipe_process_id));
+diesel::joinable!(recipe_processes -> recipe_templates (recipe_template_id));
+diesel::joinable!(recipe_processes -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> resource_specifications (resource_specification_id));
 diesel::joinable!(recipe_templates_access -> agents (agent_id));
@@ -251,13 +232,13 @@ diesel::joinable!(resource_specifications -> agents (agent_id));
 diesel::allow_tables_to_appear_in_same_query!(
     agents,
     economic_resources,
-    process_events,
-    process_flow,
-    process_flow_data_field_queries,
-    process_flow_data_fields,
-    processes,
+    locations,
+    lot_codes,
     recipe_flow_template_data_fields,
+    recipe_flow_template_visibility_fields,
     recipe_flow_templates,
+    recipe_process_flows,
+    recipe_processes,
     recipe_resources,
     recipe_templates,
     recipe_templates_access,

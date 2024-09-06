@@ -83,7 +83,8 @@ pub enum ActionType {
     Transfer,
     Use,
     Load,
-    Unload
+    Unload,
+    Accept
 }
 
 impl ToSql<ActionTypeEnum, Pg> for ActionType {
@@ -97,6 +98,7 @@ impl ToSql<ActionTypeEnum, Pg> for ActionType {
             ActionType::Use => out.write_all(b"Use")?,
             ActionType::Load => out.write_all(b"Load")?,
             ActionType::Unload => out.write_all(b"Unload")?,
+            ActionType::Accept => out.write_all(b"Accept")?,
         }
         Ok(IsNull::No)
     }
@@ -113,6 +115,7 @@ impl FromSql<ActionTypeEnum, Pg> for ActionType {
             b"Use" => Ok(ActionType::Use),
             b"Load" => Ok(ActionType::Load),
             b"Unload" => Ok(ActionType::Unload),
+            b"Accept" => Ok(ActionType::Accept),
             _ => Err("Unrecognized enum variant".into()),
         }
     }

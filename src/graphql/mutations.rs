@@ -3,12 +3,11 @@ use uuid::Uuid;
 
 use crate::{
     common::{
-        agent::Agent, economic_resource::EconomicResource,
-        resource_specification::{ResourceSpecification, ResourceType},
+        agent::Agent, economic_resource::EconomicResource, location::Location, resource_specification::{ResourceSpecification, ResourceType}
     }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
 };
 
-use super::modules::{common::{agent, economic_resource, resource_specification}, recipe::recipe::create_recipe, templates::template::{self, RecipeFlowTemplateArg}};
+use super::modules::{common::{agent, economic_resource, location, resource_specification}, recipe::recipe, templates::template::{self, RecipeFlowVisibilityFieldArg, RecipeFlowTemplateArg}};
 
 pub struct MutationRoot;
 
@@ -69,8 +68,9 @@ impl MutationRoot {
         name: String,
         recipe_template_type: RecipeTemplateType,
         recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
+        recipe_flow_visibility_fields: Vec<RecipeFlowVisibilityFieldArg>
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
-        template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args)
+        template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args, recipe_flow_visibility_fields)
     }
 
     /** Recipe Template Access */
@@ -90,7 +90,12 @@ impl MutationRoot {
         note: Option<String>,
         recipe_resources: Vec<Uuid>,
     ) -> FieldResult<RecipeWithResources> {
-        create_recipe(&context, agent_id, name, note, recipe_resources)
+        recipe::create_recipe(&context, agent_id, name, note, recipe_resources)
+    }
+
+    /** Locations */
+    fn create_location(context: &Context, agent_id: Uuid, name: String, value: String) -> FieldResult<Location> {
+        location::create_location(&context, agent_id, name, value)
     }
 
     // /** Process */

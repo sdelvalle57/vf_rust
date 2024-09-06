@@ -10,42 +10,47 @@ use diesel::{
 use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
-use crate::db::schema::recipe_flow_template_data_fields;
+use crate::db::schema::{recipe_flow_template_data_fields, sql_types::FieldClassEnum};
 
 use crate::db::schema::sql_types::FieldTypeEnum;
-use crate::db::schema::sql_types::FieldValueEnum;
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
-#[diesel(sql_type = FieldValueEnum)]
-pub enum FieldValue {
+#[diesel(sql_type = FieldClassEnum)]
+pub enum FieldClass {
     Product,
     Quantity,
     HasPointInTime,
     AtLocation,
-    Note
+    TrackingIdentifier,
+    Note,
+    Custom
 }
 
-impl ToSql<FieldValueEnum, Pg> for FieldValue {
+impl ToSql<FieldClassEnum, Pg> for FieldClass {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
-            FieldValue::Product => out.write_all(b"product")?,
-            FieldValue::Quantity => out.write_all(b"quantity")?,
-            FieldValue::HasPointInTime => out.write_all(b"hasPointInTime")?,
-            FieldValue::AtLocation => out.write_all(b"atLocation")?,
-            FieldValue::Note => out.write_all(b"note")?,
+            FieldClass::Product => out.write_all(b"product")?,
+            FieldClass::Quantity => out.write_all(b"quantity")?,
+            FieldClass::HasPointInTime => out.write_all(b"hasPointInTime")?,
+            FieldClass::AtLocation => out.write_all(b"atLocation")?,
+            FieldClass::TrackingIdentifier => out.write_all(b"trackingIdentifier")?,
+            FieldClass::Note => out.write_all(b"note")?,
+            FieldClass::Custom => out.write_all(b"custom")?,
         }
         Ok(IsNull::No)
     }
 }
 
-impl FromSql<FieldValueEnum, Pg> for FieldValue {
+impl FromSql<FieldClassEnum, Pg> for FieldClass {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
-            b"product" => Ok(FieldValue::Product),
-            b"quantity" => Ok(FieldValue::Quantity),
-            b"hasPointInTime" => Ok(FieldValue::HasPointInTime),
-            b"atLocation" => Ok(FieldValue::AtLocation),
-            b"note" => Ok(FieldValue::Note),
+            b"product" => Ok(FieldClass::Product),
+            b"quantity" => Ok(FieldClass::Quantity),
+            b"hasPointInTime" => Ok(FieldClass::HasPointInTime),
+            b"atLocation" => Ok(FieldClass::AtLocation),
+            b"trackingIdentifier" => Ok(FieldClass::TrackingIdentifier),
+            b"note" => Ok(FieldClass::Note),
+            b"custom" => Ok(FieldClass::Custom),
             _ => Err("Unrecognized enum variant".into()),
         }
     }
@@ -91,11 +96,12 @@ impl FromSql<FieldTypeEnum, Pg> for FieldType {
 pub struct RecipeFlowTemplateDataField {
     pub id: Uuid,
     pub recipe_flow_template_id: Uuid,
-    pub field_value: FieldValue,
+    pub field_class: FieldClass,
     pub field: String,
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
+    pub field_identifier: String
 }
 
 
@@ -104,40 +110,45 @@ pub struct RecipeFlowTemplateDataField {
 #[diesel(table_name = recipe_flow_template_data_fields)]
 pub struct NewRecipeFlowTemplateDataField<'a> {
     pub recipe_flow_template_id: &'a Uuid,
-    pub field_value: &'a FieldValue,
+    pub field_class: &'a FieldClass,
     pub field: &'a str,
     pub field_type: &'a FieldType,
     pub note: Option<&'a str>,
     pub required: &'a bool,
+    pub field_identifier: &'a str
 }
 
 impl<'a> NewRecipeFlowTemplateDataField<'a> {
     pub fn new(
         recipe_flow_template_id: &'a Uuid,
-        field_value: &'a FieldValue,
+        field_class: &'a FieldClass,
         field: &'a str,
         field_type: &'a FieldType,
         note: Option<&'a str>,
         required: &'a bool,
+        field_identifier: &'a str
     ) -> Self {
         NewRecipeFlowTemplateDataField {
             recipe_flow_template_id,
-            field_value,
+            field_class,
             field,
             field_type,
             note,
             required,
+            field_identifier
         }
     }
 }
 
 #[derive(juniper::GraphQLObject)]
 pub struct RecipeFlowTemplateDataFieldInput {
-    pub field_value: FieldValue,
+    pub id: Uuid,
+    pub field_class: FieldClass,
     pub field: String,
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
+    pub field_identifier: String
 }
 
 impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
@@ -145,11 +156,13 @@ impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
 
     fn try_from(value: RecipeFlowTemplateDataField) -> Result<Self, Self::Error> {
         Ok(RecipeFlowTemplateDataFieldInput {
-            field_value: value.field_value,
+            id: value.id,
+            field_class: value.field_class,
             field: value.field,
             field_type: value.field_type,
             note: value.note,
             required: value.required,
+            field_identifier: value.field_identifier
         })
     }
 }

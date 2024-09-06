@@ -96,4 +96,5 @@ impl RecipeTemplateWithRecipeFlows {
     pub fn add_recipe_flow(&mut self, recipe_flow: RecipeFlowTemplateWithDataFields) {
         self.recipe_flows.push(recipe_flow)
     }
+
 }
