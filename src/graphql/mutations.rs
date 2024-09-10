@@ -7,7 +7,7 @@ use crate::{
     }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
 };
 
-use super::modules::{common::{agent, economic_resource, location, resource_specification}, recipe::recipe, templates::template::{self, RecipeFlowVisibilityFieldArg, RecipeFlowTemplateArg}};
+use super::modules::{common::{agent, economic_resource, location, resource_specification}, process::process::{create_recipe_processes, CreateRecipeProcessesResponse, RecipeProcessWithRelation}, recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}};
 
 pub struct MutationRoot;
 
@@ -67,10 +67,9 @@ impl MutationRoot {
         context: &Context,
         name: String,
         recipe_template_type: RecipeTemplateType,
-        recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
-        recipe_flow_visibility_fields: Vec<RecipeFlowVisibilityFieldArg>
+        recipe_flow_template_args: Vec<RecipeFlowTemplateArg>
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
-        template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args, recipe_flow_visibility_fields)
+        template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args)
     }
 
     /** Recipe Template Access */
@@ -99,13 +98,11 @@ impl MutationRoot {
     }
 
     // /** Process */
-    // fn create_process(
-    //     context: &Context,
-    //     recipe_id: Uuid,
-    //     name: String,
-    //     note: Option<String>,
-    //     output_of: Option<Uuid>,
-    // ) -> FieldResult<ProcessWithRecipe> {
-    //     create_process(&context, recipe_id, name, note, output_of)
-    // }
+    fn create_recipe_processes(
+        context: &Context,
+        recipe_id: Uuid,
+        data: Vec<RecipeProcessWithRelation>
+    ) -> FieldResult<CreateRecipeProcessesResponse> {
+        create_recipe_processes(&context, recipe_id, data)
+    }
 }

@@ -10,9 +10,10 @@ use diesel::{
 use juniper::{GraphQLEnum, GraphQLObject};
 use uuid::Uuid;
 
-use crate::db::schema::{recipe_flow_template_data_fields, sql_types::FieldClassEnum};
-
-use crate::db::schema::sql_types::FieldTypeEnum;
+use crate::db::schema::{
+    recipe_flow_template_data_fields, 
+    sql_types::{FieldClassEnum, FieldTypeEnum, FlowThroughEnum}
+};
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = FieldClassEnum)]
@@ -89,6 +90,37 @@ impl FromSql<FieldTypeEnum, Pg> for FieldType {
     }
 }
 
+
+#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
+#[diesel(sql_type = FlowThroughEnum)]
+pub enum FlowThrough {
+    Internal,
+    External,
+}
+
+// ToSql implementation
+impl ToSql<FlowThroughEnum, Pg> for FlowThrough {
+    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
+        match *self {
+            FlowThrough::Internal => out.write_all(b"Internal")?,
+            FlowThrough::External => out.write_all(b"External")?,
+        }
+        Ok(IsNull::No)
+    }
+}
+
+// FromSql implementation
+impl FromSql<FlowThroughEnum, Pg> for FlowThrough {
+    fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
+        match bytes.as_bytes() {
+            b"Internal" => Ok(FlowThrough::Internal),
+            b"External" => Ok(FlowThrough::External),
+            _ => Err("Unrecognized enum variant".into()),
+        }
+    }
+}
+
+
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = recipe_flow_template_data_fields)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -96,12 +128,13 @@ impl FromSql<FieldTypeEnum, Pg> for FieldType {
 pub struct RecipeFlowTemplateDataField {
     pub id: Uuid,
     pub recipe_flow_template_id: Uuid,
+    pub field_identifier: String,
     pub field_class: FieldClass,
     pub field: String,
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub field_identifier: String
+    pub flow_through: Option<FlowThrough>
 }
 
 
@@ -110,32 +143,35 @@ pub struct RecipeFlowTemplateDataField {
 #[diesel(table_name = recipe_flow_template_data_fields)]
 pub struct NewRecipeFlowTemplateDataField<'a> {
     pub recipe_flow_template_id: &'a Uuid,
+    pub field_identifier: &'a str,
     pub field_class: &'a FieldClass,
     pub field: &'a str,
     pub field_type: &'a FieldType,
     pub note: Option<&'a str>,
     pub required: &'a bool,
-    pub field_identifier: &'a str
+    pub flow_through: Option<&'a FlowThrough>
 }
 
 impl<'a> NewRecipeFlowTemplateDataField<'a> {
     pub fn new(
         recipe_flow_template_id: &'a Uuid,
+        field_identifier: &'a str,
         field_class: &'a FieldClass,
         field: &'a str,
         field_type: &'a FieldType,
         note: Option<&'a str>,
         required: &'a bool,
-        field_identifier: &'a str
+        flow_through: Option<&'a FlowThrough>
     ) -> Self {
         NewRecipeFlowTemplateDataField {
             recipe_flow_template_id,
+            field_identifier,
             field_class,
             field,
             field_type,
             note,
             required,
-            field_identifier
+            flow_through
         }
     }
 }
@@ -148,7 +184,8 @@ pub struct RecipeFlowTemplateDataFieldInput {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub field_identifier: String
+    pub field_identifier: String,
+    pub flow_through: Option<FlowThrough>
 }
 
 impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
@@ -162,7 +199,8 @@ impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
             field_type: value.field_type,
             note: value.note,
             required: value.required,
-            field_identifier: value.field_identifier
+            field_identifier: value.field_identifier,
+            flow_through: value.flow_through
         })
     }
 }

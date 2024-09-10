@@ -18,6 +18,10 @@ pub mod sql_types {
     pub struct FieldTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "flow_through_enum"))]
+    pub struct FlowThroughEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "recipe_template_type_enum"))]
     pub struct RecipeTemplateTypeEnum;
 
@@ -85,26 +89,18 @@ diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::FieldClassEnum;
     use super::sql_types::FieldTypeEnum;
+    use super::sql_types::FlowThroughEnum;
 
     recipe_flow_template_data_fields (id) {
         id -> Uuid,
         recipe_flow_template_id -> Uuid,
+        field_identifier -> Text,
         field_class -> FieldClassEnum,
         field -> Text,
         field_type -> FieldTypeEnum,
         note -> Nullable<Text>,
         required -> Bool,
-        field_identifier -> Text,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-
-    recipe_flow_template_visibility_fields (id) {
-        id -> Uuid,
-        recipe_flow_template_id -> Uuid,
-        field_id -> Uuid,
+        flow_through -> Nullable<FlowThroughEnum>,
     }
 }
 
@@ -120,6 +116,27 @@ diesel::table! {
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
         action -> ActionTypeEnum,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::FieldClassEnum;
+    use super::sql_types::FieldTypeEnum;
+    use super::sql_types::FlowThroughEnum;
+
+    recipe_process_flow_data_fields (id) {
+        id -> Uuid,
+        recipe_process_flow_id -> Uuid,
+        recipe_flow_template_data_field_id -> Nullable<Uuid>,
+        field_identifier -> Text,
+        field_class -> FieldClassEnum,
+        field -> Text,
+        field_type -> FieldTypeEnum,
+        note -> Nullable<Text>,
+        required -> Bool,
+        default_value -> Nullable<Text>,
+        flow_through -> Nullable<FlowThroughEnum>,
     }
 }
 
@@ -149,6 +166,7 @@ diesel::table! {
         recipe_template_id -> Nullable<Uuid>,
         name -> Text,
         recipe_type -> RecipeTemplateTypeEnum,
+        output_of -> Nullable<Uuid>,
     }
 }
 
@@ -215,9 +233,9 @@ diesel::joinable!(economic_resources -> resource_specifications (resource_specif
 diesel::joinable!(locations -> agents (agent_id));
 diesel::joinable!(lot_codes -> agents (agent_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
-diesel::joinable!(recipe_flow_template_visibility_fields -> recipe_flow_template_data_fields (field_id));
-diesel::joinable!(recipe_flow_template_visibility_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
+diesel::joinable!(recipe_process_flow_data_fields -> recipe_flow_template_data_fields (recipe_flow_template_data_field_id));
+diesel::joinable!(recipe_process_flow_data_fields -> recipe_process_flows (recipe_process_flow_id));
 diesel::joinable!(recipe_process_flows -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_process_flows -> recipe_processes (recipe_process_id));
 diesel::joinable!(recipe_processes -> recipe_templates (recipe_template_id));
@@ -235,8 +253,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     locations,
     lot_codes,
     recipe_flow_template_data_fields,
-    recipe_flow_template_visibility_fields,
     recipe_flow_templates,
+    recipe_process_flow_data_fields,
     recipe_process_flows,
     recipe_processes,
     recipe_resources,

@@ -1,17 +1,16 @@
 use crate::{
     db::schema::{
-        recipe_flow_template_data_fields, recipe_flow_template_visibility_fields,
+        recipe_flow_template_data_fields,
         recipe_flow_templates, recipe_templates, recipe_templates_access,
     },
     graphql::context::Context,
     templates::{
-        recipe_flow_visibility_fields::NewRecipeFlowVisibilityField,
         recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
         },
         recipe_flow_template_data_field::{
-            FieldClass, FieldType, NewRecipeFlowTemplateDataField, RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput
+            FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField, RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput
         },
         recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
@@ -40,12 +39,7 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-}
-
-#[derive(juniper::GraphQLInputObject)]
-pub struct RecipeFlowVisibilityFieldArg {
-    from: String,
-    field_id: String,
+    pub flow_through: Option<FlowThrough>,
 }
 
 /** Queries */
@@ -177,41 +171,12 @@ pub fn create_recipe_template(
     context: &Context,
     name: String,
     recipe_template_type: RecipeTemplateType,
-    recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
-    recipe_flow_visibility_fields: Vec<RecipeFlowVisibilityFieldArg>,
+    recipe_flow_template_args: Vec<RecipeFlowTemplateArg>   
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
         .get()
         .expect("Failed to get DB connection from pool");
-
-    for rf in recipe_flow_visibility_fields {
-        let location_of_recipe_template: RecipeTemplate = recipe_templates::table
-            .filter(recipe_templates::name.eq(rf.from))
-            .first::<RecipeTemplate>(conn)?;
-
-        let location_of_recipe_flow_template: RecipeFlowTemplate = recipe_flow_templates::table
-            .filter(recipe_flow_templates::recipe_template_id.eq(location_of_recipe_template.id))
-            .first::<RecipeFlowTemplate>(conn)?;
-
-        let location_of_rft_data_field: RecipeFlowTemplateDataField =
-            recipe_flow_template_data_fields::table
-                .filter(
-                    recipe_flow_template_data_fields::recipe_flow_template_id
-                        .eq(&location_of_recipe_flow_template.id),
-                )
-                .filter(recipe_flow_template_data_fields::field_identifier.eq(rf.field_id))
-                .first::<RecipeFlowTemplateDataField>(conn)?;
-
-        let new_rft_required_field = NewRecipeFlowVisibilityField::new(
-            &location_of_recipe_flow_template.id,
-            &location_of_rft_data_field.id,
-        );
-
-        let ins = diesel::insert_into(recipe_flow_template_visibility_fields::table)
-            .values(new_rft_required_field)
-            .execute(conn);
-    };
 
     // Create the new recipe template
     let new_template = NewRecipeTemplate::new(&name, &recipe_template_type);
@@ -242,16 +207,20 @@ pub fn create_recipe_template(
         let mut recipe_flow_res =
             RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
 
+
         // Iterate over each data field and add it to the recipe flow
         for rd in r.data_fields {
+            let flow_through_ref: Option<&FlowThrough> = rd.flow_through.as_ref();
+
             let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                 &inserted_recipe_flow_template.id,
+                &rd.field_identifier,
                 &rd.field_class,
                 &rd.field,
                 &rd.field_type,
                 rd.note.as_deref(),
                 &rd.required,
-                &rd.field_identifier
+                flow_through_ref
             );
 
             let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
