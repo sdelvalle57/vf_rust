@@ -7,7 +7,7 @@ use crate::{
     common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes} 
 }; 
 
-#[derive(Queryable, GraphQLObject, Debug)]
+#[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipes)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Recipe {

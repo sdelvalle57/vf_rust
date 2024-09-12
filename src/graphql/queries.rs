@@ -13,9 +13,7 @@ use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
 use super::modules::{
-    common::{agent, economic_resource, location, resource_specification},
-    recipe::recipe,
-    templates::template,
+    common::{agent, economic_resource, location, resource_specification}, process::process::{self, RecipeProcessesResponse}, recipe::recipe, templates::template
 };
 
 pub struct QueryRoot;
@@ -100,5 +98,13 @@ impl QueryRoot {
         agent_id: Uuid,
     ) -> FieldResult<Vec<RecipeWithResources>> {
         recipe::recipes_by_agent(&context, agent_id)
+    }
+
+
+    fn get_recipe_processes(
+        context: &Context,
+        recipe_id: Uuid
+    ) -> FieldResult<RecipeProcessesResponse> {
+        process::get_recipe_processes(context, recipe_id)
     }
 }

@@ -166,82 +166,87 @@ pub fn get_templates_access_by_agent(
     Ok(res)
 }
 
-/** Mutations */
 pub fn create_recipe_template(
     context: &Context,
     name: String,
     recipe_template_type: RecipeTemplateType,
-    recipe_flow_template_args: Vec<RecipeFlowTemplateArg>   
+    recipe_flow_template_args: Vec<RecipeFlowTemplateArg>
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
         .get()
         .expect("Failed to get DB connection from pool");
 
-    // Create the new recipe template
-    let new_template = NewRecipeTemplate::new(&name, &recipe_template_type);
+    // Start a transaction
+    conn.transaction::<_, FieldError, _>(|conn| {
+        // Create the new recipe template
+        let new_template = NewRecipeTemplate::new(&name, &recipe_template_type);
 
-    let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
-        .values(&new_template)
-        .get_result(conn)?;
+        let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
+            .values(&new_template)
+            .get_result(conn)
+            .map_err(|e| FieldError::new(e, juniper::Value::null()))?;  // Map diesel::result::Error to FieldError
 
-    // Initialize the result struct
-    let mut res: RecipeTemplateWithRecipeFlows =
-        RecipeTemplateWithRecipeFlows::new(&inserted_template);
+        // Initialize the result struct
+        let mut res: RecipeTemplateWithRecipeFlows =
+            RecipeTemplateWithRecipeFlows::new(&inserted_template);
 
-    // Iterate over each `RecipeFlowTemplateArg`
-    for r in recipe_flow_template_args {
-        // Create and insert a new recipe flow template
-        let new_recipe_flow_template = NewRecipeFlowTemplate::new(
-            &inserted_template.id,
-            &r.event_type,
-            &r.role_type,
-            &r.action,
-        );
-        let inserted_recipe_flow_template: RecipeFlowTemplate =
-            diesel::insert_into(recipe_flow_templates::table)
-                .values(&new_recipe_flow_template)
-                .get_result(conn)?;
-
-        // Initialize `RecipeFlowTemplateWithDataFields` struct
-        let mut recipe_flow_res =
-            RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
-
-
-        // Iterate over each data field and add it to the recipe flow
-        for rd in r.data_fields {
-            let flow_through_ref: Option<&FlowThrough> = rd.flow_through.as_ref();
-
-            let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
-                &inserted_recipe_flow_template.id,
-                &rd.field_identifier,
-                &rd.field_class,
-                &rd.field,
-                &rd.field_type,
-                rd.note.as_deref(),
-                &rd.required,
-                flow_through_ref
+        // Iterate over each `RecipeFlowTemplateArg`
+        for r in recipe_flow_template_args {
+            // Create and insert a new recipe flow template
+            let new_recipe_flow_template = NewRecipeFlowTemplate::new(
+                &inserted_template.id,
+                &r.event_type,
+                &r.role_type,
+                &r.action,
             );
+            let inserted_recipe_flow_template: RecipeFlowTemplate =
+                diesel::insert_into(recipe_flow_templates::table)
+                    .values(&new_recipe_flow_template)
+                    .get_result(conn)
+                    .map_err(|e| FieldError::new(e, juniper::Value::null()))?;  // Map diesel::result::Error to FieldError
 
-            let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
-                diesel::insert_into(recipe_flow_template_data_fields::table)
-                    .values(new_recipe_flow_template_data_field)
-                    .get_result(conn)?;
+            // Initialize `RecipeFlowTemplateWithDataFields` struct
+            let mut recipe_flow_res =
+                RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
 
-            let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput =
-                inserted_recipe_flow_template_data_field
-                    .try_into()
-                    .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
+            // Iterate over each data field and add it to the recipe flow
+            for rd in r.data_fields {
+                let flow_through_ref: Option<&FlowThrough> = rd.flow_through.as_ref();
 
-            // Add the data field to the recipe flow
-            recipe_flow_res.add_data_field(recipe_flow_template_data_field_input);
+                let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
+                    &inserted_recipe_flow_template.id,
+                    &rd.field_identifier,
+                    &rd.field_class,
+                    &rd.field,
+                    &rd.field_type,
+                    rd.note.as_deref(),
+                    &rd.required,
+                    flow_through_ref
+                );
+
+                let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
+                    diesel::insert_into(recipe_flow_template_data_fields::table)
+                        .values(new_recipe_flow_template_data_field)
+                        .get_result(conn)
+                        .map_err(|e| FieldError::new(e, juniper::Value::null()))?;  // Map diesel::result::Error to FieldError
+
+                let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput =
+                    inserted_recipe_flow_template_data_field
+                        .try_into()
+                        .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
+
+                // Add the data field to the recipe flow
+                recipe_flow_res.add_data_field(recipe_flow_template_data_field_input);
+            }
+
+            // Add the complete `recipe_flow_res` to the result
+            res.add_recipe_flow(recipe_flow_res);
         }
 
-        // Add the complete `recipe_flow_res` to the result
-        res.add_recipe_flow(recipe_flow_res);
-    };
-
-    Ok(res)
+        // If all succeeds, return the result
+        Ok(res)
+    })
 }
 
 pub fn assign_template_to_agent(
