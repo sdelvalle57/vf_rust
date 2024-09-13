@@ -158,6 +158,16 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+
+    recipe_process_relations (id) {
+        id -> Uuid,
+        recipe_process_id -> Uuid,
+        output_of -> Uuid,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
     use super::sql_types::RecipeTemplateTypeEnum;
 
     recipe_processes (id) {
@@ -166,7 +176,6 @@ diesel::table! {
         recipe_template_id -> Nullable<Uuid>,
         name -> Text,
         recipe_type -> RecipeTemplateTypeEnum,
-        output_of -> Nullable<Uuid>,
     }
 }
 
@@ -256,6 +265,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     recipe_flow_templates,
     recipe_process_flow_data_fields,
     recipe_process_flows,
+    recipe_process_relations,
     recipe_processes,
     recipe_resources,
     recipe_templates,

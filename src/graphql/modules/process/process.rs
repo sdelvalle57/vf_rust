@@ -3,27 +3,32 @@ use juniper::{FieldError, FieldResult, GraphQLInputObject, GraphQLObject};
 use uuid::Uuid;
 
 use crate::{
-    common::resource_specification::ResourceSpecification, db::schema::{
-        recipe_process_flow_data_fields, recipe_process_flows, recipe_processes, recipe_resources,
-        recipes,
-    }, graphql::{context::Context, modules::common::resource_specification::resource_specification_by_id}, recipe::{
+    common::resource_specification::ResourceSpecification,
+    db::schema::{
+        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations, recipe_processes, recipe_resources, recipes
+    },
+    graphql::{
+        context::Context, modules::common::resource_specification::resource_specification_by_id,
+    },
+    recipe::{
         process::{
             data_field::{NewRecipeFlowDataField, RecipeFlowDataField},
             flow::{NewRecipeProcessFlow, RecipeProcessFlow, RecipeProcessFlowResponse},
-            process::{NewRecipeProcess, RecipeProcess, RecipeProcessResponse},
+            process::{NewOutpuOf, NewRecipeProcess, OutputOf, RecipeProcess, RecipeProcessResponse},
         },
         recipe::{Recipe, RecipeResource},
-    }, templates::{
+    },
+    templates::{
         recipe_flow_template::{ActionType, EventType, RoleType},
         recipe_flow_template_data_field::{FieldClass, FieldType, FlowThrough},
         recipe_template::RecipeTemplateType,
-    }
+    },
 };
 
 #[derive(GraphQLInputObject)]
 pub struct RecipeProcessWithRelation {
     pub recipe_process: RecipeWithRecipeFlows,
-    pub output_of: Option<RecipeWithRecipeFlows>,
+    pub output_of: Vec<RecipeWithRecipeFlows>,
 }
 
 #[derive(GraphQLInputObject)]
@@ -122,10 +127,9 @@ pub fn get_recipe_processes(
     for resource in recipe_resources {
         let spec = resource_specification_by_id(context, resource.resource_specification_id)?;
         resources.push(spec)
-    };
+    }
 
-    let mut res: RecipeProcessesResponse =
-        RecipeProcessesResponse::new(recipe.clone(), resources);
+    let mut res: RecipeProcessesResponse = RecipeProcessesResponse::new(recipe.clone(), resources);
 
     let recipe_processes: Vec<RecipeProcess> = recipe_processes::table
         .filter(recipe_processes::recipe_id.eq(recipe_id))
@@ -158,6 +162,14 @@ pub fn get_recipe_processes(
             recipe_process_response.add_recipe_process_flow(recipe_process_flow_response);
         }
 
+        let output_of_values: Vec<OutputOf> = recipe_process_relations::table
+            .filter(recipe_process_relations::recipe_process_id.eq(recipe_process.id))
+            .load::<OutputOf>(conn)?; 
+
+        for output_of in output_of_values {
+            recipe_process_response.add_output_of(output_of.id);
+        }
+
         res.add_recipe_process(recipe_process_response);
     }
 
@@ -183,42 +195,23 @@ pub fn create_recipe_processes(
         let recipe_resources: Vec<RecipeResource> = recipe_resources::table
             .filter(recipe_resources::recipe_id.eq(recipe_id))
             .load::<RecipeResource>(conn)?;
-    
+
         let mut resources: Vec<ResourceSpecification> = Vec::new();
-    
+
         for resource in recipe_resources {
             let spec = resource_specification_by_id(context, resource.resource_specification_id)?;
             resources.push(spec)
-        };
+        }
 
         let mut res: CreateRecipeProcessesResponse =
             CreateRecipeProcessesResponse::new(recipe.clone(), resources);
 
         for recipe_process in data {
-            let output_of_id: Option<&Uuid> =
-                recipe_process.output_of.as_ref().map(|output| &output.id);
-
-            //search for recipe_process_templates with id output_of_id
-            let output = if let Some(id) = output_of_id {
-                //search for same info saved into recipe_processes
-                let output: RecipeProcess = recipe_processes::table
-                    .filter(recipe_processes::recipe_id.eq(recipe.id))
-                    .filter(recipe_processes::recipe_template_id.eq(id))
-                    .first(conn)?;
-
-                Some(output.id)
-            } else {
-                None
-            };
-
-            let output_of_id: Option<&Uuid> = output.as_ref();
-
             let new_recipe_process = NewRecipeProcess::new(
                 &recipe_id,
                 &recipe_process.recipe_process.id,
                 &recipe_process.recipe_process.name,
                 &recipe_process.recipe_process.recipe_template_type,
-                output_of_id,
             );
 
             let inserted_recipe_process: RecipeProcess =
@@ -228,6 +221,23 @@ pub fn create_recipe_processes(
 
             let mut recipe_process_response: RecipeProcessResponse =
                 RecipeProcessResponse::new(inserted_recipe_process.clone());
+
+            for output_of in recipe_process.output_of {
+
+                let process_output_of: RecipeProcess = recipe_processes::table
+                    .filter(recipe_processes::recipe_id.eq(&recipe_id))
+                    .filter(recipe_processes::recipe_template_id.eq(output_of.id))
+                    .first::<RecipeProcess>(conn)?;
+                
+                let new_output_of =
+                    NewOutpuOf::new(&inserted_recipe_process.id, &process_output_of.id);
+                
+                let inserted_relation: OutputOf = diesel::insert_into(recipe_process_relations::table)
+                    .values(new_output_of)
+                    .get_result(conn)?;
+
+                    recipe_process_response.add_output_of(inserted_relation.output_of);
+            }
 
             //Iterate over flows
             for flow in recipe_process.recipe_process.recipe_flows {

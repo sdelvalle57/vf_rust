@@ -121,7 +121,13 @@ CREATE TABLE IF NOT EXISTS recipe_processes (
     recipe_id UUID NOT NULL REFERENCES recipes(id),
     recipe_template_id UUID REFERENCES recipe_templates(id),
     name TEXT NOT NULL,
-    recipe_type recipe_template_type_enum NOT NULL,
+    recipe_type recipe_template_type_enum NOT NULL
+);
+
+-- Process conection relations
+CREATE TABLE IF NOT EXISTS recipe_process_relations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_process_id UUID NOT NULL REFERENCES recipe_processes(id),
     output_of UUID REFERENCES recipe_processes(id)
 );
 
