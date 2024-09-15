@@ -157,3 +157,34 @@ CREATE TABLE IF NOT EXISTS recipe_process_flow_data_fields (
     default_value TEXT,
     flow_through flow_through_enum
 );
+
+CREATE TABLE IF NOT EXISTS process_executions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    process_flow_id UUID NOT NULL REFERENCES recipe_process_flows(id),
+    action action_type_enum NOT NULL,
+    role_type role_type_enum NOT NULL,
+    resource_specification UUID REFERENCES resource_specifications(id),
+    resource_reference_number INTEGER NOT NULL DEFAULT 1,
+    resource_lot_number INTEGER NOT NULL DEFAULT 1,
+    resource_quantity INTEGER NOT NULL DEFAULT 0,
+    to_resource_specification UUID REFERENCES resource_specifications(id),
+    to_resource_reference_number INTEGER NOT NULL DEFAULT 1,
+    to_resource_lot_number INTEGER NOT NULL DEFAULT 1,
+    provider_agent UUID NOT NULL REFERENCES agents(id),
+    receiver_agent UUID NOT NULL REFERENCES agents(id),
+    at_location UUID NOT NULL REFERENCES locations(id),
+    to_location UUID REFERENCES locations(id),
+    has_point_in_time TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    corrects UUID REFERENCES process_executions(id),
+    note TEXT,
+);
+
+CREATE TABLE IF NOT EXISTS process_execution_custom_values (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    process_execution_id UUID NOT NULL REFERENCES process_executions(id),
+    field_id UUID NOT NULL REFERENCES recipe_process_flow_data_fields(id),
+    field_value TEXT NOT NULL,
+    corrects UUID REFERENCES process_execution_custom_values(id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

@@ -87,6 +87,47 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+
+    process_execution_custom_values (id) {
+        id -> Uuid,
+        process_execution_id -> Uuid,
+        field_id -> Uuid,
+        field_value -> Text,
+        corrects -> Nullable<Uuid>,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::ActionTypeEnum;
+    use super::sql_types::RoleTypeEnum;
+
+    process_executions (id) {
+        id -> Uuid,
+        process_flow_id -> Uuid,
+        action -> ActionTypeEnum,
+        role_type -> RoleTypeEnum,
+        resource_specification -> Nullable<Uuid>,
+        resource_reference_number -> Int4,
+        resource_lot_number -> Int4,
+        resource_quantity -> Int4,
+        to_resource_specification -> Nullable<Uuid>,
+        to_resource_reference_number -> Int4,
+        to_resource_lot_number -> Int4,
+        provider_agent -> Uuid,
+        receiver_agent -> Uuid,
+        at_location -> Uuid,
+        to_location -> Nullable<Uuid>,
+        has_point_in_time -> Nullable<Timestamp>,
+        created_at -> Timestamp,
+        corrects -> Nullable<Uuid>,
+        note -> Nullable<Text>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
     use super::sql_types::FieldClassEnum;
     use super::sql_types::FieldTypeEnum;
     use super::sql_types::FlowThroughEnum;
@@ -241,6 +282,9 @@ diesel::table! {
 diesel::joinable!(economic_resources -> resource_specifications (resource_specification_id));
 diesel::joinable!(locations -> agents (agent_id));
 diesel::joinable!(lot_codes -> agents (agent_id));
+diesel::joinable!(process_execution_custom_values -> process_executions (process_execution_id));
+diesel::joinable!(process_execution_custom_values -> recipe_process_flow_data_fields (field_id));
+diesel::joinable!(process_executions -> recipe_process_flows (process_flow_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_process_flow_data_fields -> recipe_flow_template_data_fields (recipe_flow_template_data_field_id));
@@ -261,6 +305,8 @@ diesel::allow_tables_to_appear_in_same_query!(
     economic_resources,
     locations,
     lot_codes,
+    process_execution_custom_values,
+    process_executions,
     recipe_flow_template_data_fields,
     recipe_flow_templates,
     recipe_process_flow_data_fields,
