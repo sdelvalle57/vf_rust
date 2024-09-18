@@ -52,6 +52,7 @@ pub struct RecipeFlowWithDataFields {
     pub event_type: EventType,
     pub role_type: RoleType,
     pub action: ActionType,
+    pub inherits: Option<bool>,
     pub data_fields: Vec<RecipeFlowDataFieldInput>,
 }
 

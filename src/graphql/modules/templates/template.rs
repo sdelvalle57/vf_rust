@@ -232,25 +232,11 @@ pub fn create_recipe_template(
                 r.inherits.as_ref(),
                 &r.action,
             );
-            println!("new_recipe_flow_template: {:?}", &new_recipe_flow_template);
             
-            
-            let inserted_recipe_flow_template = match diesel::insert_into(recipe_flow_templates::table)
-            .values(&new_recipe_flow_template)
-            .get_result(conn) {
-                Ok(result) => result, // If everything is fine, return the result
-                Err(e) => {
-                    // Custom error handling, log or inspect the error here
-                    // For example, if you want to return a specific error based on the Diesel error:
-                    println!("{e}");
-                    return Err(FieldError::new(
-                        "An unexpected error occurred",
-                        graphql_value!({ "details"})
-                    ));
-                }
-            };
+            let inserted_recipe_flow_template: RecipeFlowTemplate = diesel::insert_into(recipe_flow_templates::table)
+                .values(&new_recipe_flow_template)
+                .get_result::<RecipeFlowTemplate>(conn)?;
 
-            println!("inserted_recipe_flow_template {:?}", &inserted_recipe_flow_template);
             // Initialize `RecipeFlowTemplateWithDataFields` struct
             let mut recipe_flow_res =
                 RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
