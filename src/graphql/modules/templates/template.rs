@@ -1,7 +1,7 @@
 use crate::{
     db::schema::{
-        recipe_flow_template_data_fields,
-        recipe_flow_templates, recipe_templates, recipe_templates_access,
+        recipe_flow_template_data_fields, recipe_flow_templates, recipe_templates,
+        recipe_templates_access,
     },
     graphql::context::Context,
     templates::{
@@ -10,7 +10,8 @@ use crate::{
             RecipeFlowTemplateWithDataFields, RoleType,
         },
         recipe_flow_template_data_field::{
-            FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField, RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput
+            FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField,
+            RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
         },
         recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
@@ -28,6 +29,7 @@ pub struct RecipeFlowTemplateArg {
     event_type: EventType,
     role_type: RoleType,
     action: ActionType,
+    inherits: Option<bool>,
     data_fields: Vec<RecipeFlowTemplateDataFieldArg>,
 }
 
@@ -166,11 +168,18 @@ pub fn get_templates_access_by_agent(
     Ok(res)
 }
 
+/*
+commitment -> Nullable<ActionTypeEnum>,
+        fulfills -> Nullable<Uuid>,
+*/
 pub fn create_recipe_template(
     context: &Context,
+    identifier: String,
     name: String,
     recipe_template_type: RecipeTemplateType,
-    recipe_flow_template_args: Vec<RecipeFlowTemplateArg>
+    recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
+    commitment: Option<ActionType>,
+    fulfills: Option<String>,
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
@@ -180,16 +189,38 @@ pub fn create_recipe_template(
     // Start a transaction
     conn.transaction::<_, FieldError, _>(|conn| {
         // Create the new recipe template
-        let new_template = NewRecipeTemplate::new(&name, &recipe_template_type);
+        let fulfills_id = if let Some(process_identifier) = fulfills {
+            // Attempt to get the recipe by identifier
+            let recipe: RecipeTemplate = recipe_templates::table
+                .filter(recipe_templates::identifier.eq(process_identifier))
+                .first::<RecipeTemplate>(conn)?;
+        
+            // Return the recipe's id wrapped in Some
+            Some(recipe.id)
+        } else {
+            // If fulfills is None, return None
+            None
+        };
+        
+        let new_template = NewRecipeTemplate::new(
+            &identifier,
+            &name, 
+            commitment.as_ref(),
+            fulfills_id.as_ref(),
+            &recipe_template_type
+            
+        );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
             .values(&new_template)
             .get_result(conn)
-            .map_err(|e| FieldError::new(e, juniper::Value::null()))?;  // Map diesel::result::Error to FieldError
+            .map_err(|e| FieldError::new(e, juniper::Value::null()))?; // Map diesel::result::Error to FieldError
 
         // Initialize the result struct
         let mut res: RecipeTemplateWithRecipeFlows =
             RecipeTemplateWithRecipeFlows::new(&inserted_template);
+
+        
 
         // Iterate over each `RecipeFlowTemplateArg`
         for r in recipe_flow_template_args {
@@ -198,14 +229,28 @@ pub fn create_recipe_template(
                 &inserted_template.id,
                 &r.event_type,
                 &r.role_type,
+                r.inherits.as_ref(),
                 &r.action,
             );
-            let inserted_recipe_flow_template: RecipeFlowTemplate =
-                diesel::insert_into(recipe_flow_templates::table)
-                    .values(&new_recipe_flow_template)
-                    .get_result(conn)
-                    .map_err(|e| FieldError::new(e, juniper::Value::null()))?;  // Map diesel::result::Error to FieldError
+            println!("new_recipe_flow_template: {:?}", &new_recipe_flow_template);
+            
+            
+            let inserted_recipe_flow_template = match diesel::insert_into(recipe_flow_templates::table)
+            .values(&new_recipe_flow_template)
+            .get_result(conn) {
+                Ok(result) => result, // If everything is fine, return the result
+                Err(e) => {
+                    // Custom error handling, log or inspect the error here
+                    // For example, if you want to return a specific error based on the Diesel error:
+                    println!("{e}");
+                    return Err(FieldError::new(
+                        "An unexpected error occurred",
+                        graphql_value!({ "details"})
+                    ));
+                }
+            };
 
+            println!("inserted_recipe_flow_template {:?}", &inserted_recipe_flow_template);
             // Initialize `RecipeFlowTemplateWithDataFields` struct
             let mut recipe_flow_res =
                 RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
@@ -222,14 +267,14 @@ pub fn create_recipe_template(
                     &rd.field_type,
                     rd.note.as_deref(),
                     &rd.required,
-                    flow_through_ref
+                    flow_through_ref,
                 );
 
                 let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
                     diesel::insert_into(recipe_flow_template_data_fields::table)
                         .values(new_recipe_flow_template_data_field)
                         .get_result(conn)
-                        .map_err(|e| FieldError::new(e, juniper::Value::null()))?;  // Map diesel::result::Error to FieldError
+                        .map_err(|e| FieldError::new(e, juniper::Value::null()))?; // Map diesel::result::Error to FieldError
 
                 let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput =
                     inserted_recipe_flow_template_data_field

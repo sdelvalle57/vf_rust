@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::{fmt::write, io::Write};
 
 use diesel::{
     deserialize::{self, FromSql, FromSqlRow}, 
@@ -84,7 +84,8 @@ pub enum ActionType {
     Use,
     Load,
     Unload,
-    Accept
+    Accept,
+    Dispatch
 }
 
 impl ToSql<ActionTypeEnum, Pg> for ActionType {
@@ -99,6 +100,7 @@ impl ToSql<ActionTypeEnum, Pg> for ActionType {
             ActionType::Load => out.write_all(b"Load")?,
             ActionType::Unload => out.write_all(b"Unload")?,
             ActionType::Accept => out.write_all(b"Accept")?,
+            ActionType::Dispatch => out.write_all(b"Dispatch")?,
         }
         Ok(IsNull::No)
     }
@@ -116,6 +118,7 @@ impl FromSql<ActionTypeEnum, Pg> for ActionType {
             b"Load" => Ok(ActionType::Load),
             b"Unload" => Ok(ActionType::Unload),
             b"Accept" => Ok(ActionType::Accept),
+            b"Dispatch" => Ok(ActionType::Dispatch),
             _ => Err("Unrecognized enum variant".into()),
         }
     }
@@ -133,42 +136,48 @@ pub struct RecipeFlowTemplate {
     pub recipe_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
+    pub inherits: Option<bool>,
     pub action: ActionType
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[diesel(table_name = recipe_flow_templates)]
 pub struct NewRecipeFlowTemplate<'a> {
     pub recipe_template_id: &'a Uuid,
     pub event_type: &'a EventType,
     pub role_type: &'a RoleType,
+    pub inherits: Option<&'a bool>,
     pub action: &'a ActionType,
 }
+
 
 impl<'a> NewRecipeFlowTemplate<'a> {
     pub fn new(
         recipe_template_id: &'a Uuid,
         event_type: &'a EventType,
         role_type: &'a RoleType,
+        inherits: Option<&'a bool>,
         action: &'a ActionType,
     ) -> Self {
         NewRecipeFlowTemplate {
             recipe_template_id,
             event_type,
             role_type,
+            inherits,
             action
         }
     }
 }
 
 
-#[derive(juniper::GraphQLObject)]
+#[derive(juniper::GraphQLObject, Debug)]
 pub struct RecipeFlowTemplateWithDataFields {
     pub id: Uuid,
     pub recipe_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
     pub action: ActionType,
+    pub inherits: Option<bool>,
     pub data_fields: Vec<RecipeFlowTemplateDataFieldInput>
 }
 
@@ -180,6 +189,7 @@ impl RecipeFlowTemplateWithDataFields {
             event_type: recipe_flow_template.event_type.clone(),
             role_type: recipe_flow_template.role_type,
             action: recipe_flow_template.action,
+            inherits: recipe_flow_template.inherits,
             data_fields: Vec::new()
         }
     }

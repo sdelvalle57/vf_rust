@@ -1,11 +1,14 @@
+use std::fmt::format;
+
 use diesel::prelude::*;
-use juniper::{FieldError, FieldResult, GraphQLInputObject, GraphQLObject};
+use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject, GraphQLObject};
 use uuid::Uuid;
 
 use crate::{
     common::resource_specification::ResourceSpecification,
     db::schema::{
-        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations, recipe_processes, recipe_resources, recipes
+        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations,
+        recipe_processes, recipe_resources, recipes,
     },
     graphql::{
         context::Context, modules::common::resource_specification::resource_specification_by_id,
@@ -14,7 +17,10 @@ use crate::{
         process::{
             data_field::{NewRecipeFlowDataField, RecipeFlowDataField},
             flow::{NewRecipeProcessFlow, RecipeProcessFlow, RecipeProcessFlowResponse},
-            process::{NewOutpuOf, NewRecipeProcess, OutputOf, RecipeProcess, RecipeProcessResponse},
+            process::{
+                NewOutpuOf, NewRecipeProcess, OutputOf, ProcessFlow, RecipeProcess,
+                RecipeProcessResponse,
+            },
         },
         recipe::{Recipe, RecipeResource},
     },
@@ -164,7 +170,7 @@ pub fn get_recipe_processes(
 
         let output_of_values: Vec<OutputOf> = recipe_process_relations::table
             .filter(recipe_process_relations::recipe_process_id.eq(recipe_process.id))
-            .load::<OutputOf>(conn)?; 
+            .load::<OutputOf>(conn)?;
 
         for output_of in output_of_values {
             recipe_process_response.add_output_of(output_of.id);
@@ -223,20 +229,20 @@ pub fn create_recipe_processes(
                 RecipeProcessResponse::new(inserted_recipe_process.clone());
 
             for output_of in recipe_process.output_of {
-
                 let process_output_of: RecipeProcess = recipe_processes::table
                     .filter(recipe_processes::recipe_id.eq(&recipe_id))
                     .filter(recipe_processes::recipe_template_id.eq(output_of.id))
                     .first::<RecipeProcess>(conn)?;
-                
+
                 let new_output_of =
                     NewOutpuOf::new(&inserted_recipe_process.id, &process_output_of.id);
-                
-                let inserted_relation: OutputOf = diesel::insert_into(recipe_process_relations::table)
-                    .values(new_output_of)
-                    .get_result(conn)?;
 
-                    recipe_process_response.add_output_of(inserted_relation.output_of);
+                let inserted_relation: OutputOf =
+                    diesel::insert_into(recipe_process_relations::table)
+                        .values(new_output_of)
+                        .get_result(conn)?; 
+
+                recipe_process_response.add_output_of(inserted_relation.output_of);
             }
 
             //Iterate over flows
@@ -303,10 +309,73 @@ pub fn create_recipe_processes(
     })
 }
 
+#[derive(GraphQLInputObject)]
+pub struct DataFieldValue {
+    id: Uuid,
+    value: String,
+}
 
-//TODO: this is the event execution, check which values should come in here
-pub fn execute_events(context: &Context, process_flow_id: Uuid) -> FieldResult<()> {
-    
-    
-    Ok(())
+#[derive(GraphQLInputObject)]
+pub struct ProcessExecution {
+    process_flow_id: Uuid,
+    data_field_values: Vec<DataFieldValue>,
+}
+
+
+//TODO: iterate over process_flows, get process flow info from db, get action and role_type
+    //check action of the process flow, to apply the logic depending on action and role_type
+    //also iterate over data fields and complete the info to create the data in process_executions
+    //and process_execution_custom_values tables
+pub fn execute_events(context: &Context, process_flows: Vec<ProcessExecution>) -> FieldResult<String> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    // Begin transaction
+    conn.transaction::<_, FieldError, _>(|conn| {
+        
+        for process_flow in process_flows {
+            let process_flow_id = process_flow.process_flow_id;
+            let process_flow_info: ProcessFlow = recipe_process_flows::table
+                .filter(recipe_process_flows::id.eq(process_flow_id))
+                .first::<ProcessFlow>(conn)?;
+
+            let action = process_flow_info.action;
+            let role_type = process_flow_info.role_type;
+            let custom_message = format!("Invalid Action {:?}", action.clone());
+
+            // Handle invalid action based on role_type
+            if let RoleType::Input = role_type {
+                match action {
+                    ActionType::Accept
+                    | ActionType::Cite
+                    | ActionType::Consume
+                    | ActionType::Load
+                    | ActionType::Use => {
+                        return Err(FieldError::new(
+                            "Action is not valid as Input",
+                            graphql_value!({ "code": custom_message }),
+                        ));
+                    },
+                    _ => {
+                        return Err(FieldError::new(
+                            "Action is not valid as Output",
+                            graphql_value!({ "code": custom_message }),
+                        ));
+                    }
+                }
+            } else if let RoleType::Output = role_type {
+                return Err(FieldError::new(
+                    "Action is not valid as Output",
+                    graphql_value!({ "code": custom_message }),
+                ));
+            }
+        }
+
+        Ok(())
+    })?;
+
+    // If the transaction is successful, return the result
+    Ok(format!("All events executed successfully"))
 }

@@ -156,6 +156,7 @@ diesel::table! {
         recipe_template_id -> Uuid,
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
+        inherits -> Nullable<Bool>,
         action -> ActionTypeEnum,
     }
 }
@@ -233,11 +234,15 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+    use super::sql_types::ActionTypeEnum;
     use super::sql_types::RecipeTemplateTypeEnum;
 
     recipe_templates (id) {
         id -> Uuid,
+        identifier -> Text,
         name -> Text,
+        commitment -> Nullable<ActionTypeEnum>,
+        fulfills -> Nullable<Uuid>,
         recipe_template_type -> RecipeTemplateTypeEnum,
     }
 }

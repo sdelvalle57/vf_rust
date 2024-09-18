@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::{
     common::{
         agent::Agent, economic_resource::EconomicResource, location::Location, resource_specification::{ResourceSpecification, ResourceType}
-    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
+    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_flow_template::ActionType, recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
 };
 
 use super::modules::{common::{agent, economic_resource, location, resource_specification}, process::process::{create_recipe_processes, CreateRecipeProcessesResponse, RecipeProcessWithRelation}, recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}};
@@ -65,11 +65,22 @@ impl MutationRoot {
     /** Recipe Templates */
     fn create_recipe_template(
         context: &Context,
+        identifier: String,
         name: String,
         recipe_template_type: RecipeTemplateType,
-        recipe_flow_template_args: Vec<RecipeFlowTemplateArg>
+        recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
+        commitment: Option<ActionType>,
+        fulfills: Option<String>,
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
-        template::create_recipe_template(context, name, recipe_template_type, recipe_flow_template_args)
+        template::create_recipe_template(
+            context, 
+            identifier,
+            name, 
+            recipe_template_type, 
+            recipe_flow_template_args,
+            commitment,
+            fulfills
+        )
     }
 
     /** Recipe Template Access */

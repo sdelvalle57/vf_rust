@@ -24,7 +24,8 @@ pub enum FieldClass {
     AtLocation,
     TrackingIdentifier,
     Note,
-    Custom
+    Custom,
+    ToCompany
 }
 
 impl ToSql<FieldClassEnum, Pg> for FieldClass {
@@ -36,6 +37,7 @@ impl ToSql<FieldClassEnum, Pg> for FieldClass {
             FieldClass::AtLocation => out.write_all(b"atLocation")?,
             FieldClass::TrackingIdentifier => out.write_all(b"trackingIdentifier")?,
             FieldClass::Note => out.write_all(b"note")?,
+            FieldClass::ToCompany => out.write_all(b"toCompany")?,
             FieldClass::Custom => out.write_all(b"custom")?,
         }
         Ok(IsNull::No)
@@ -51,6 +53,7 @@ impl FromSql<FieldClassEnum, Pg> for FieldClass {
             b"atLocation" => Ok(FieldClass::AtLocation),
             b"trackingIdentifier" => Ok(FieldClass::TrackingIdentifier),
             b"note" => Ok(FieldClass::Note),
+            b"toCompany" => Ok(FieldClass::ToCompany),
             b"custom" => Ok(FieldClass::Custom),
             _ => Err("Unrecognized enum variant".into()),
         }
@@ -176,7 +179,7 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
     }
 }
 
-#[derive(juniper::GraphQLObject)]
+#[derive(juniper::GraphQLObject, Debug)]
 pub struct RecipeFlowTemplateDataFieldInput {
     pub id: Uuid,
     pub field_class: FieldClass,

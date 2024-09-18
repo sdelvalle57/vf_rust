@@ -15,7 +15,7 @@ use crate::db::schema::recipe_templates;
 
 use crate::db::schema::sql_types::RecipeTemplateTypeEnum;
 
-use super::recipe_flow_template::RecipeFlowTemplateWithDataFields;
+use super::recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields};
 
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
@@ -52,34 +52,48 @@ impl FromSql<RecipeTemplateTypeEnum, Pg> for RecipeTemplateType {
 
 pub struct RecipeTemplate {
     pub id: Uuid,
+    pub identifier: String,
     pub name: String,
+    pub commitment: Option<ActionType>,
+    pub fulfills: Option<Uuid>,
     pub recipe_template_type: RecipeTemplateType
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_templates)]
 pub struct NewRecipeTemplate<'a> {
+    pub identifier: &'a str,
     pub name: &'a str,
+    pub commitment: Option<&'a ActionType>,
+    pub fulfills: Option<&'a Uuid>,
     pub recipe_template_type: &'a RecipeTemplateType,
 }
 
 impl<'a> NewRecipeTemplate<'a> {
     pub fn new(
+        identifier: &'a str,
         name: &'a str,
+        commitment: Option<&'a ActionType>,
+        fulfills: Option<&'a Uuid>,
         recipe_template_type: &'a RecipeTemplateType
     ) -> Self {
         NewRecipeTemplate {
+            identifier,
             name,
+            commitment,
+            fulfills,
             recipe_template_type
         }
     }
 }
 
-#[derive(juniper::GraphQLObject)]
+#[derive(juniper::GraphQLObject, Debug)]
 pub struct RecipeTemplateWithRecipeFlows {
     pub id: Uuid,
     pub name: String,
     pub recipe_template_type: RecipeTemplateType,
+    pub commitment: Option<ActionType>,
+    pub fulfills: Option<Uuid>,
     pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
 }
 
@@ -89,6 +103,8 @@ impl RecipeTemplateWithRecipeFlows {
             id: recipe_template.id,
             name: recipe_template.name.clone(),
             recipe_template_type: recipe_template.recipe_template_type.clone(),
+            commitment: recipe_template.commitment,
+            fulfills: recipe_template.fulfills,
             recipe_flows: Vec::new()
         }
     }

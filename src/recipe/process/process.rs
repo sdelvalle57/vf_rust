@@ -3,7 +3,7 @@ use juniper::GraphQLObject;
 use uuid::Uuid;
 
 use crate::{
-    db::schema::{recipe_process_relations, recipe_processes}, templates::recipe_template::RecipeTemplateType
+    db::schema::{recipe_process_relations, recipe_processes}, templates::{recipe_flow_template::{ActionType, EventType, RoleType}, recipe_template::RecipeTemplateType}
 };
 
 use super::flow::RecipeProcessFlowResponse;
@@ -105,3 +105,14 @@ impl RecipeProcessResponse {
 }
 
 
+#[derive(Queryable, GraphQLObject, Debug, Clone)]
+#[diesel(table_name = recipe_process_flows)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct ProcessFlow {
+    pub id: Uuid,
+    pub recipe_process_id: Uuid,
+    pub recipe_flow_template_id: Uuid,
+    pub event_type: EventType,
+    pub role_type: RoleType,
+    pub action: ActionType
+}
