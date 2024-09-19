@@ -117,3 +117,62 @@ impl MutationRoot {
         create_recipe_processes(&context, recipe_id, data)
     }
 }
+
+
+/*
+fn get_latest_lot_code_for_agent(conn: &PgConnection, agent_id: Uuid) -> QueryResult<(Option<i32>, Option<i32>)> {
+    use crate::schema::lot_codes::dsl::*;
+
+    lot_codes
+        .filter(agent_id.eq(agent_id))
+        .select((diesel::dsl::max(lot_code), diesel::dsl::max(reference_number)))
+        .first::<(Option<i32>, Option<i32>)>(conn)
+}
+
+        fn insert_lot_code(
+    conn: &PgConnection,
+    agent: Uuid,
+    increment_lot_code: bool,
+    increment_reference_number: bool,
+) -> QueryResult<LotCode> {
+    use crate::schema::lot_codes;
+    use diesel::insert_into;
+
+    // Get the latest lot_code and reference_number for the agent
+    let (latest_lot_code, latest_reference_number) = get_latest_lot_code_for_agent(conn, agent)?;
+
+    // Determine the new values for lot_code and reference_number
+    let new_lot_code = if increment_lot_code {
+        latest_lot_code.unwrap_or(0) + 1
+    } else {
+        latest_lot_code.unwrap_or(1) // Default to 1 if none found
+    };
+
+    let new_reference_number = if increment_reference_number {
+        latest_reference_number.unwrap_or(0) + 1
+    } else {
+        latest_reference_number.unwrap_or(1) // Default to 1 if none found
+    };
+
+    // Insert the new row into the table
+    let new_lot_code_row = diesel::insert_into(lot_codes::table)
+        .values((
+            lot_codes::agent_id.eq(agent),
+            lot_codes::lot_code.eq(new_lot_code),
+            lot_codes::reference_number.eq(new_reference_number),
+        ))
+        .get_result::<LotCode>(conn)?;
+
+    Ok(new_lot_code_row)
+}
+
+
+// Example 1: Increment only the reference number
+let new_lot_code = insert_lot_code(&conn, agent_id, false, true)
+    .expect("Error inserting new lot code");
+
+// Example 2: Increment the lot code and the reference number
+let new_lot_code = insert_lot_code(&conn, agent_id, true, true)
+    .expect("Error inserting new lot code");
+
+*/

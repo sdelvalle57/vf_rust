@@ -48,6 +48,18 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
 
+    counters (id) {
+        id -> Uuid,
+        agent_id -> Uuid,
+        lot_code -> Int4,
+        reference_number -> Int4,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+
     economic_resources (id) {
         id -> Uuid,
         resource_specification_id -> Uuid,
@@ -72,16 +84,6 @@ diesel::table! {
         agent_id -> Uuid,
         name -> Text,
         value -> Text,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-
-    lot_codes (id) {
-        id -> Uuid,
-        agent_id -> Uuid,
-        current_lot_code -> Int4,
     }
 }
 
@@ -289,9 +291,9 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(counters -> agents (agent_id));
 diesel::joinable!(economic_resources -> resource_specifications (resource_specification_id));
 diesel::joinable!(locations -> agents (agent_id));
-diesel::joinable!(lot_codes -> agents (agent_id));
 diesel::joinable!(process_execution_custom_values -> process_executions (process_execution_id));
 diesel::joinable!(process_execution_custom_values -> recipe_process_flow_data_fields (field_id));
 diesel::joinable!(process_executions -> recipe_process_flows (process_flow_id));
@@ -312,9 +314,9 @@ diesel::joinable!(resource_specifications -> agents (agent_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     agents,
+    counters,
     economic_resources,
     locations,
-    lot_codes,
     process_execution_custom_values,
     process_executions,
     recipe_flow_template_data_fields,
