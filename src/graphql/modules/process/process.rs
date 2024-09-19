@@ -7,8 +7,7 @@ use uuid::Uuid;
 use crate::{
     common::resource_specification::ResourceSpecification,
     db::schema::{
-        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations,
-        recipe_processes, recipe_resources, recipes,
+        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations, recipe_processes, recipe_resources, recipe_templates, recipes
     },
     graphql::{
         context::Context, modules::common::resource_specification::resource_specification_by_id,
@@ -27,7 +26,7 @@ use crate::{
     templates::{
         recipe_flow_template::{ActionType, EventType, RoleType},
         recipe_flow_template_data_field::{FieldClass, FieldType, FlowThrough},
-        recipe_template::RecipeTemplateType,
+        recipe_template::{RecipeTemplate, RecipeTemplateType},
     },
 };
 
@@ -42,7 +41,10 @@ pub struct RecipeWithRecipeFlows {
     pub id: Uuid,
     pub name: String,
     pub recipe_template_type: RecipeTemplateType,
+    pub commitment: Option<ActionType>,
+    pub fulfills: Option<Uuid>,
     pub recipe_flows: Vec<RecipeFlowWithDataFields>,
+    pub identifier: String,
 }
 
 #[derive(GraphQLInputObject)]
@@ -184,6 +186,7 @@ pub fn get_recipe_processes(
 }
 
 /** Mutations */
+//TODO: should check for inheritance, commitment and fulfillment
 pub fn create_recipe_processes(
     context: &Context,
     recipe_id: Uuid,
@@ -214,12 +217,35 @@ pub fn create_recipe_processes(
             CreateRecipeProcessesResponse::new(recipe.clone(), resources);
 
         for recipe_process in data {
+            
+            let fulfills: Option<Uuid> = if let Some(fulfills_value) = recipe_process.recipe_process.fulfills {
+                //get from recipe_templates the data that fulfills this
+                //get the identifier
+                let recipe_process_template: RecipeTemplate = recipe_templates::table
+                    .filter(recipe_templates::id.eq(fulfills_value))
+                    .first::<RecipeTemplate>(conn)?;
+
+                    //search for the identifier in the recipe_process table
+                let recipe_process: RecipeProcess = recipe_processes::table
+                    .filter(recipe_processes::recipe_id.eq(recipe_id))
+                    .filter(recipe_processes::identifier.eq(recipe_process_template.identifier))
+                    .first(conn)?;
+
+                Some(recipe_process.id)
+            } else {
+                None
+            };
+            
             let new_recipe_process = NewRecipeProcess::new(
                 &recipe_id,
                 &recipe_process.recipe_process.id,
                 &recipe_process.recipe_process.name,
                 &recipe_process.recipe_process.recipe_template_type,
+                recipe_process.recipe_process.commitment.as_ref(),
+                fulfills.as_ref(),
+                &recipe_process.recipe_process.identifier
             );
+
 
             let inserted_recipe_process: RecipeProcess =
                 diesel::insert_into(recipe_processes::table)
@@ -254,6 +280,7 @@ pub fn create_recipe_processes(
                     &flow.event_type,
                     &flow.role_type,
                     &flow.action,
+                    flow.inherits.as_ref()
                 );
 
                 let inserted_recipe_flow: RecipeProcessFlow =
@@ -290,10 +317,11 @@ pub fn create_recipe_processes(
                             .get_result(conn)?;
 
                     println!(
-                        "{} {:?} {}",
+                        "{} {:?} {} {:?}",
                         recipe_process.recipe_process.name,
                         flow.action,
-                        data_field.field_identifier
+                        data_field.field_identifier,
+                        flow.role_type
                     );
 
                     recipe_process_flow_response.add_data_field(inserted_data_field);

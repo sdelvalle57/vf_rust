@@ -121,6 +121,8 @@ CREATE TABLE IF NOT EXISTS recipe_processes (
     recipe_id UUID NOT NULL REFERENCES recipes(id),
     recipe_template_id UUID REFERENCES recipe_templates(id),
     name TEXT NOT NULL,
+    commitment action_type_enum,
+    fulfills UUID REFERENCES recipe_processes(id),
     recipe_type recipe_template_type_enum NOT NULL
 );
 
@@ -138,6 +140,7 @@ CREATE TABLE IF NOT EXISTS recipe_process_flows (
     recipe_flow_template_id UUID NOT NULL REFERENCES recipe_flow_templates(id),
     event_type event_type_enum NOT NULL,
     role_type role_type_enum NOT NULL,
+    inherits BOOLEAN,
     action action_type_enum NOT NULL
 );
 

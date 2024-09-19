@@ -17,7 +17,11 @@ pub struct RecipeProcess {
     pub recipe_template_id: Option<Uuid>,
     pub name: String,
     pub recipe_type: RecipeTemplateType,
+    pub commitment: Option<ActionType>,
+    pub fulfills: Option<Uuid>,
+    pub identifier: String,
 }
+
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_processes)]
@@ -26,6 +30,9 @@ pub struct NewRecipeProcess<'a> {
     pub recipe_template_id: &'a Uuid,
     pub name: &'a str,
     pub recipe_type: &'a RecipeTemplateType,
+    pub commitment: Option<&'a ActionType>,
+    pub fulfills: Option<&'a Uuid>,
+    pub identifier: &'a str,
 }
 
 impl<'a>  NewRecipeProcess<'a> {
@@ -34,12 +41,18 @@ impl<'a>  NewRecipeProcess<'a> {
         recipe_template_id: &'a Uuid,
         name: &'a str,
         recipe_type: &'a RecipeTemplateType,
+        commitment: Option<&'a ActionType>,
+        fulfills: Option<&'a Uuid>,
+        identifier: &'a str
     ) -> Self {
         NewRecipeProcess {
             recipe_id,
             recipe_template_id, 
             name,
             recipe_type,
+            commitment,
+            fulfills,
+            identifier
         }
     }
 }
@@ -81,7 +94,10 @@ pub struct RecipeProcessResponse {
     pub name: String,
     pub recipe_type: RecipeTemplateType,
     pub output_of: Vec<Uuid>,
-    pub process_flows: Vec<RecipeProcessFlowResponse>
+    pub process_flows: Vec<RecipeProcessFlowResponse>,
+    pub commitment: Option<ActionType>,
+    pub fulfills: Option<Uuid>,
+    pub identifier: String,
 }
 
 impl RecipeProcessResponse {
@@ -90,6 +106,9 @@ impl RecipeProcessResponse {
             id: recipe_process.id,
             name: recipe_process.name,
             recipe_type: recipe_process.recipe_type,
+            commitment: recipe_process.commitment,
+            fulfills: recipe_process.fulfills,
+            identifier: recipe_process.identifier,
             output_of: Vec::new(),
             process_flows: Vec::new()
         }
@@ -114,5 +133,6 @@ pub struct ProcessFlow {
     pub recipe_flow_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub action: ActionType
+    pub action: ActionType,
+    pub inherits: Option<bool>
 }

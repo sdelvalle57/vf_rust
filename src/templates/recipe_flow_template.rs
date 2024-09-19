@@ -1,4 +1,4 @@
-use std::{fmt::write, io::Write};
+use std::io::Write;
 
 use diesel::{
     deserialize::{self, FromSql, FromSqlRow}, 

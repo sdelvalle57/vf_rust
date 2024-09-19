@@ -16,6 +16,7 @@ pub struct RecipeProcessFlow {
     pub event_type: EventType,
     pub role_type: RoleType,
     pub action: ActionType,
+    pub inherits: Option<bool>
 }
 
 #[derive(Insertable)]
@@ -25,7 +26,8 @@ pub struct NewRecipeProcessFlow<'a> {
     pub recipe_flow_template_id: &'a Uuid,
     pub event_type: &'a EventType,
     pub role_type: &'a RoleType,
-    pub action: &'a ActionType
+    pub action: &'a ActionType,
+    pub inherits: Option<&'a bool>
 }
 
 impl<'a>  NewRecipeProcessFlow<'a> {
@@ -34,14 +36,16 @@ impl<'a>  NewRecipeProcessFlow<'a> {
         recipe_flow_template_id: &'a Uuid,
         event_type: &'a EventType,
         role_type: &'a RoleType,
-        action: &'a ActionType
+        action: &'a ActionType,
+        inherits: Option<&'a bool>
     ) -> Self {
         NewRecipeProcessFlow {
             recipe_process_id,
             recipe_flow_template_id, 
             event_type,
             role_type,
-            action
+            action,
+            inherits
         }
     }
 }

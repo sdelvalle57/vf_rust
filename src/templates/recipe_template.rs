@@ -94,6 +94,7 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub recipe_template_type: RecipeTemplateType,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
+    pub identifier: String,
     pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
 }
 
@@ -105,6 +106,7 @@ impl RecipeTemplateWithRecipeFlows {
             recipe_template_type: recipe_template.recipe_template_type.clone(),
             commitment: recipe_template.commitment,
             fulfills: recipe_template.fulfills,
+            identifier: recipe_template.identifier.clone(),
             recipe_flows: Vec::new()
         }
     }
