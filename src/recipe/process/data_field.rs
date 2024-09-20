@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::{db::schema::recipe_process_flow_data_fields, templates::recipe_flow_template_data_field::{FieldClass, FieldType, FlowThrough}};
 
-#[derive(Queryable, GraphQLObject, Debug)]
+#[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipe_process_flow_data_fields)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct RecipeFlowDataField {

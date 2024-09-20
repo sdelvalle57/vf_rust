@@ -1,13 +1,14 @@
 use std::fmt::format;
 
-use diesel::prelude::*;
+use diesel::{dsl::Field, prelude::*};
 use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject, GraphQLObject};
 use uuid::Uuid;
 
 use crate::{
     common::resource_specification::ResourceSpecification,
     db::schema::{
-        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations, recipe_processes, recipe_resources, recipe_templates, recipes
+        recipe_process_flow_data_fields, recipe_process_flows, recipe_process_relations,
+        recipe_processes, recipe_resources, recipe_templates, recipes,
     },
     graphql::{
         context::Context, modules::common::resource_specification::resource_specification_by_id,
@@ -217,25 +218,25 @@ pub fn create_recipe_processes(
             CreateRecipeProcessesResponse::new(recipe.clone(), resources);
 
         for recipe_process in data {
-            
-            let fulfills: Option<Uuid> = if let Some(fulfills_value) = recipe_process.recipe_process.fulfills {
-                //get from recipe_templates the data that fulfills this
-                //get the identifier
-                let recipe_process_template: RecipeTemplate = recipe_templates::table
-                    .filter(recipe_templates::id.eq(fulfills_value))
-                    .first::<RecipeTemplate>(conn)?;
+            let fulfills: Option<Uuid> =
+                if let Some(fulfills_value) = recipe_process.recipe_process.fulfills {
+                    //get from recipe_templates the data that fulfills this
+                    //get the identifier
+                    let recipe_process_template: RecipeTemplate = recipe_templates::table
+                        .filter(recipe_templates::id.eq(fulfills_value))
+                        .first::<RecipeTemplate>(conn)?;
 
                     //search for the identifier in the recipe_process table
-                let recipe_process: RecipeProcess = recipe_processes::table
-                    .filter(recipe_processes::recipe_id.eq(recipe_id))
-                    .filter(recipe_processes::identifier.eq(recipe_process_template.identifier))
-                    .first(conn)?;
+                    let recipe_process: RecipeProcess = recipe_processes::table
+                        .filter(recipe_processes::recipe_id.eq(recipe_id))
+                        .filter(recipe_processes::identifier.eq(recipe_process_template.identifier))
+                        .first(conn)?;
 
-                Some(recipe_process.id)
-            } else {
-                None
-            };
-            
+                    Some(recipe_process.id)
+                } else {
+                    None
+                };
+
             let new_recipe_process = NewRecipeProcess::new(
                 &recipe_id,
                 &recipe_process.recipe_process.id,
@@ -243,9 +244,8 @@ pub fn create_recipe_processes(
                 &recipe_process.recipe_process.recipe_template_type,
                 recipe_process.recipe_process.commitment.as_ref(),
                 fulfills.as_ref(),
-                &recipe_process.recipe_process.identifier
+                &recipe_process.recipe_process.identifier,
             );
-
 
             let inserted_recipe_process: RecipeProcess =
                 diesel::insert_into(recipe_processes::table)
@@ -267,7 +267,7 @@ pub fn create_recipe_processes(
                 let inserted_relation: OutputOf =
                     diesel::insert_into(recipe_process_relations::table)
                         .values(new_output_of)
-                        .get_result(conn)?; 
+                        .get_result(conn)?;
 
                 recipe_process_response.add_output_of(inserted_relation.output_of);
             }
@@ -280,7 +280,7 @@ pub fn create_recipe_processes(
                     &flow.event_type,
                     &flow.role_type,
                     &flow.action,
-                    flow.inherits.as_ref()
+                    flow.inherits.as_ref(),
                 );
 
                 let inserted_recipe_flow: RecipeProcessFlow =
@@ -338,7 +338,7 @@ pub fn create_recipe_processes(
     })
 }
 
-#[derive(GraphQLInputObject)]
+#[derive(GraphQLInputObject, Debug)]
 pub struct DataFieldValue {
     id: Uuid,
     value: String,
@@ -350,12 +350,15 @@ pub struct ProcessExecution {
     data_field_values: Vec<DataFieldValue>,
 }
 
-
 //TODO: iterate over process_flows, get process flow info from db, get action and role_type
-    //check action of the process flow, to apply the logic depending on action and role_type
-    //also iterate over data fields and complete the info to create the data in process_executions
-    //and process_execution_custom_values tables
-pub fn execute_events(context: &Context, process_flows: Vec<ProcessExecution>) -> FieldResult<String> {
+//check action of the process flow, to apply the logic depending on action and role_type
+//also iterate over data fields and complete the info to create the data in process_executions
+//and process_execution_custom_values tables
+pub fn execute_events(
+    context: &Context,
+    recipe_process_id: Uuid,
+    process_flows: Vec<ProcessExecution>,
+) -> FieldResult<String> {
     let conn = &mut context
         .pool
         .get()
@@ -363,48 +366,154 @@ pub fn execute_events(context: &Context, process_flows: Vec<ProcessExecution>) -
 
     // Begin transaction
     conn.transaction::<_, FieldError, _>(|conn| {
-        
+        //get the recipe process
+        let recipe_process: RecipeProcess = recipe_processes::table
+            .filter(recipe_processes::id.eq(recipe_process_id))
+            .first::<RecipeProcess>(conn)?;
+
+        if let Some(fulfills) = recipe_process.fulfills {
+            execute_fulfillment(context, fulfills)?;
+        }
+
         for process_flow in process_flows {
             let process_flow_id = process_flow.process_flow_id;
             let process_flow_info: ProcessFlow = recipe_process_flows::table
+                .filter(recipe_process_flows::recipe_process_id.eq(recipe_process_id))
                 .filter(recipe_process_flows::id.eq(process_flow_id))
                 .first::<ProcessFlow>(conn)?;
 
             let action = process_flow_info.action;
             let role_type = process_flow_info.role_type;
-            let custom_message = format!("Invalid Action {:?}", action.clone());
+            let error_message = format!("Invalid Action {:?}", action.clone());
+
+            let process_flow_data_fields: Vec<RecipeFlowDataField> =
+                recipe_process_flow_data_fields::table
+                    .filter(
+                        recipe_process_flow_data_fields::recipe_process_flow_id.eq(process_flow_id),
+                    )
+                    .load::<RecipeFlowDataField>(conn)?;
 
             // Handle invalid action based on role_type
             if let RoleType::Input = role_type {
                 match action {
-                    ActionType::Accept
-                    | ActionType::Cite
-                    | ActionType::Consume
-                    | ActionType::Load
-                    | ActionType::Use => {
-                        return Err(FieldError::new(
-                            "Action is not valid as Input",
-                            graphql_value!({ "code": custom_message }),
-                        ));
-                    },
                     _ => {
                         return Err(FieldError::new(
                             "Action is not valid as Output",
-                            graphql_value!({ "code": custom_message }),
+                            graphql_value!({ "code": error_message }),
                         ));
                     }
                 }
             } else if let RoleType::Output = role_type {
-                return Err(FieldError::new(
-                    "Action is not valid as Output",
-                    graphql_value!({ "code": custom_message }),
-                ));
+                match action {
+                    ActionType::Produce => {
+                        let product_field_value = get_field_value(&process_flow, &process_flow_data_fields, FieldClass::Product)?;
+                        println!("{:?}", product_field_value);
+
+                        let quantity_field_value = get_field_value(&process_flow, &process_flow_data_fields, FieldClass::Quantity)?;
+                        println!("{:?}", quantity_field_value);
+
+                        //TODO: get the other values
+            
+                    }
+                    _ => {
+                        return Err(FieldError::new(
+                            "Action is not valid as Output",
+                            graphql_value!({ "code": error_message }),
+                        ));
+                    }
+                }
             }
         }
-
         Ok(())
     })?;
 
     // If the transaction is successful, return the result
     Ok(format!("All events executed successfully"))
 }
+
+fn execute_fulfillment(context: &Context, fulfills: Uuid) -> FieldResult<bool> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let recipe_process_result = recipe_processes::table
+        .filter(recipe_processes::id.eq(fulfills))
+        .first::<RecipeProcess>(conn);
+
+    // Check if the query was successful
+    match recipe_process_result {
+        Ok(res) => {
+            match res.commitment {
+                Some(commitment) => {
+                    match commitment {
+                        ActionType::Transfer => {
+                            //get the product and quantity
+                            Ok(true)
+                        }
+                        _ => {
+                            let error_message =
+                                format!("Commitment action not supported {:?}", res.name);
+                            Err(FieldError::new(
+                                "Unable to execute fulfillment",
+                                graphql_value!({ "code": error_message }),
+                            ))
+                        }
+                    }
+                }
+                None => {
+                    let error_message =
+                        format!("Unable to find commitment action in {:?}", res.name);
+                    Err(FieldError::new(
+                        "Unable to execute fulfillment",
+                        graphql_value!({ "code": error_message }),
+                    ))
+                }
+            }
+        } // If the query succeeds, return true
+        Err(e) => {
+            let error_message = format!("Commitment not found {:?}", e);
+            Err(FieldError::new(
+                "Unable to execute fulfillment",
+                graphql_value!({ "code": error_message }),
+            ))
+        }
+    }
+}
+
+fn get_field_value(
+    process_flow: &ProcessExecution,
+    data_fields: &Vec<RecipeFlowDataField>,
+    field_class: FieldClass
+) -> FieldResult<(RecipeFlowDataField, String)> {
+    // Find the product field
+    let product_field = if let Some(product_field) = data_fields
+        .iter()
+        .find(|field| field.field_class == field_class)
+    {
+        (*product_field).clone()  // Dereference the reference and then clone
+    } else {
+        return Err(FieldError::new(
+            "Unable to find Data Field",
+            graphql_value!({ "code": "Cannot Find Product Data Field" }),
+        ));
+    };
+
+    // Find the field value
+    let field_value = if let Some(field_value) = process_flow
+        .data_field_values
+        .iter()
+        .find(|df| df.id == product_field.id)
+    {
+        field_value.value.clone()
+    } else {
+        return Err(FieldError::new(
+            "Unable to find Data Field Value",
+            graphql_value!({ "code": "Product Value Not Found" }),
+        ));
+    };
+
+    // Return the cloned product field and field value
+    Ok((product_field, field_value))
+}
+

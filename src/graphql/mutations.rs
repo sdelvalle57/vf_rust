@@ -7,7 +7,7 @@ use crate::{
     }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_flow_template::ActionType, recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
 };
 
-use super::modules::{common::{agent, economic_resource, location, resource_specification}, process::process::{create_recipe_processes, CreateRecipeProcessesResponse, RecipeProcessWithRelation}, recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}};
+use super::modules::{common::{agent, economic_resource, location, resource_specification}, process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}};
 
 pub struct MutationRoot;
 
@@ -114,9 +114,17 @@ impl MutationRoot {
         recipe_id: Uuid,
         data: Vec<RecipeProcessWithRelation>
     ) -> FieldResult<CreateRecipeProcessesResponse> {
-        create_recipe_processes(&context, recipe_id, data)
+        process::create_recipe_processes(&context, recipe_id, data)
+    }
+
+    /** Process Execution */
+    fn execute_events(context: &Context, recipe_process_id: Uuid, process_flows: Vec<ProcessExecution>) -> FieldResult<String> {
+        process::execute_events(&context, recipe_process_id, process_flows)
     }
 }
+
+
+
 
 
 /*
