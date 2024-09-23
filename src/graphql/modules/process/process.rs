@@ -406,14 +406,25 @@ pub fn execute_events(
             } else if let RoleType::Output = role_type {
                 match action {
                     ActionType::Produce => {
-                        let product_field_value = get_field_value(&process_flow, &process_flow_data_fields, FieldClass::Product)?;
-                        println!("{:?}", product_field_value);
+                        let product_field_value = get_field_value(
+                            &process_flow,
+                            &process_flow_data_fields,
+                            FieldClass::Product,
+                        )?;
+                        println!("Product {:?}", product_field_value.1);
 
-                        let quantity_field_value = get_field_value(&process_flow, &process_flow_data_fields, FieldClass::Quantity)?;
-                        println!("{:?}", quantity_field_value);
+                        let quantity_field_value = get_field_value(
+                            &process_flow,
+                            &process_flow_data_fields,
+                            FieldClass::Quantity,
+                        )?;
+                        println!("Quantity {:?}", quantity_field_value.1);
 
-                        //TODO: get the other values
-            
+                        let extra_fields = get_extra_fields(&process_flow, &process_flow_data_fields)?;
+                       
+                        for extra_field in extra_fields {
+                            println!("{:?} {:?}", extra_field.field_class, extra_field.value);
+                        };
                     }
                     _ => {
                         return Err(FieldError::new(
@@ -484,18 +495,19 @@ fn execute_fulfillment(context: &Context, fulfills: Uuid) -> FieldResult<bool> {
 fn get_field_value(
     process_flow: &ProcessExecution,
     data_fields: &Vec<RecipeFlowDataField>,
-    field_class: FieldClass
+    field_class: FieldClass,
 ) -> FieldResult<(RecipeFlowDataField, String)> {
     // Find the product field
     let product_field = if let Some(product_field) = data_fields
         .iter()
         .find(|field| field.field_class == field_class)
     {
-        (*product_field).clone()  // Dereference the reference and then clone
+        (*product_field).clone() // Dereference the reference and then clone
     } else {
+        let error_message = format!("Cannot Find Product {:?} Data Field", field_class); 
         return Err(FieldError::new(
             "Unable to find Data Field",
-            graphql_value!({ "code": "Cannot Find Product Data Field" }),
+            graphql_value!({ "code": error_message }),
         ));
     };
 
@@ -507,9 +519,10 @@ fn get_field_value(
     {
         field_value.value.clone()
     } else {
+        let error_message = format!("Cannot Find Product {:?} Data Field", field_class); 
         return Err(FieldError::new(
             "Unable to find Data Field Value",
-            graphql_value!({ "code": "Product Value Not Found" }),
+            graphql_value!({ "code": error_message }),
         ));
     };
 
@@ -517,3 +530,77 @@ fn get_field_value(
     Ok((product_field, field_value))
 }
 
+#[derive(Debug)]
+struct ExtraField {
+    field: RecipeFlowDataField,
+    field_class: FieldClass,
+    value: String,
+}
+
+fn get_extra_fields(
+    process_flow: &ProcessExecution,
+    data_fields: &Vec<RecipeFlowDataField>,
+) -> FieldResult<Vec<ExtraField>> {
+    let mut res = Vec::new();
+    
+    let location_val = get_field(&process_flow, &data_fields, FieldClass::AtLocation)?;
+    let has_point_in_time_val = get_field(&process_flow, &data_fields, FieldClass::HasPointInTime)?;
+    let note_val = get_field(&process_flow, &data_fields, FieldClass::Note)?;
+    
+    if let Some(location) = location_val {
+        res.push(location);
+    };
+
+    if let Some(has_point_in_time) = has_point_in_time_val {
+        res.push(has_point_in_time);
+    };
+
+    if let Some(note) = note_val {
+        res.push(note);
+    }
+    
+    Ok(res)
+}
+
+fn get_custom_fields(
+    process_flow: &ProcessExecution,
+    data_fields: &Vec<RecipeFlowDataField>
+) -> FieldResult<Vec<ExtraField>> {
+    
+    Ok(Vec::new())
+}
+
+fn get_field(
+    process_flow: &ProcessExecution,
+    data_fields: &Vec<RecipeFlowDataField>,
+    field_class: FieldClass,
+) -> FieldResult<Option<ExtraField>> {
+    if let Some(product_field) = data_fields
+        .iter()
+        .find(|field| field.field_class == field_class) {
+        
+        let field =(*product_field).clone();
+        
+        let value = if let Some(field_value) = process_flow
+            .data_field_values
+            .iter()
+            .find(|df| df.id == product_field.id) {
+            field_value.value.clone()
+        } else {
+            let error_message = format!("Field Value {:?} Not Found ", field_class);
+            return Err(FieldError::new(
+                "Unable to find Data Field Value",
+                graphql_value!({ "code": error_message }),
+            ));
+        };
+
+        let res: ExtraField = ExtraField {
+            field_class,
+            field,
+            value
+        };
+        return Ok(Some(res));
+    };
+    Ok(None)
+
+}
