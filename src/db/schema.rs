@@ -14,6 +14,10 @@ pub mod sql_types {
     pub struct FieldClassEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "field_group_class_enum"))]
+    pub struct FieldGroupClassEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "field_type_enum"))]
     pub struct FieldTypeEnum;
 
@@ -137,6 +141,7 @@ diesel::table! {
     recipe_flow_template_data_fields (id) {
         id -> Uuid,
         recipe_flow_template_id -> Uuid,
+        group_id -> Nullable<Uuid>,
         field_identifier -> Text,
         field_class -> FieldClassEnum,
         field -> Text,
@@ -144,6 +149,17 @@ diesel::table! {
         note -> Nullable<Text>,
         required -> Bool,
         flow_through -> Nullable<FlowThroughEnum>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::FieldGroupClassEnum;
+
+    recipe_flow_template_group_data_fields (id) {
+        id -> Uuid,
+        name -> Text,
+        group_class -> FieldGroupClassEnum,
     }
 }
 
@@ -173,6 +189,7 @@ diesel::table! {
         id -> Uuid,
         recipe_process_flow_id -> Uuid,
         recipe_flow_template_data_field_id -> Nullable<Uuid>,
+        group_id -> Nullable<Uuid>,
         field_identifier -> Text,
         field_class -> FieldClassEnum,
         field -> Text,
@@ -181,6 +198,17 @@ diesel::table! {
         required -> Bool,
         default_value -> Nullable<Text>,
         flow_through -> Nullable<FlowThroughEnum>,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::FieldGroupClassEnum;
+
+    recipe_process_flow_group_data_fields (id) {
+        id -> Uuid,
+        name -> Text,
+        group_class -> FieldGroupClassEnum,
     }
 }
 
@@ -196,8 +224,8 @@ diesel::table! {
         recipe_flow_template_id -> Uuid,
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
-        action -> ActionTypeEnum,
         inherits -> Nullable<Bool>,
+        action -> ActionTypeEnum,
     }
 }
 
@@ -213,17 +241,17 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
-    use super::sql_types::RecipeTemplateTypeEnum;
     use super::sql_types::ActionTypeEnum;
+    use super::sql_types::RecipeTemplateTypeEnum;
 
     recipe_processes (id) {
         id -> Uuid,
         recipe_id -> Uuid,
         recipe_template_id -> Nullable<Uuid>,
         name -> Text,
-        recipe_type -> RecipeTemplateTypeEnum,
         commitment -> Nullable<ActionTypeEnum>,
         fulfills -> Nullable<Uuid>,
+        recipe_type -> RecipeTemplateTypeEnum,
         identifier -> Text,
     }
 }
@@ -297,9 +325,11 @@ diesel::joinable!(locations -> agents (agent_id));
 diesel::joinable!(process_execution_custom_values -> process_executions (process_execution_id));
 diesel::joinable!(process_execution_custom_values -> recipe_process_flow_data_fields (field_id));
 diesel::joinable!(process_executions -> recipe_process_flows (process_flow_id));
+diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_template_group_data_fields (group_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_process_flow_data_fields -> recipe_flow_template_data_fields (recipe_flow_template_data_field_id));
+diesel::joinable!(recipe_process_flow_data_fields -> recipe_process_flow_group_data_fields (group_id));
 diesel::joinable!(recipe_process_flow_data_fields -> recipe_process_flows (recipe_process_flow_id));
 diesel::joinable!(recipe_process_flows -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_process_flows -> recipe_processes (recipe_process_id));
@@ -320,8 +350,10 @@ diesel::allow_tables_to_appear_in_same_query!(
     process_execution_custom_values,
     process_executions,
     recipe_flow_template_data_fields,
+    recipe_flow_template_group_data_fields,
     recipe_flow_templates,
     recipe_process_flow_data_fields,
+    recipe_process_flow_group_data_fields,
     recipe_process_flows,
     recipe_process_relations,
     recipe_processes,

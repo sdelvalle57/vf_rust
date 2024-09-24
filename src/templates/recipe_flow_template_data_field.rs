@@ -18,26 +18,28 @@ use crate::db::schema::{
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = FieldClassEnum)]
 pub enum FieldClass {
-    Product,
+    ResourceSpecification,
+    EconomicResource,
     Quantity,
     HasPointInTime,
-    AtLocation,
-    TrackingIdentifier,
+    Agent,
+    Location,
     Note,
-    Custom,
-    ToCompany
+    TrackingIdentifier,
+    Custom
 }
 
 impl ToSql<FieldClassEnum, Pg> for FieldClass {
     fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
         match *self {
-            FieldClass::Product => out.write_all(b"product")?,
+            FieldClass::ResourceSpecification => out.write_all(b"resourceSpecification")?,
+            FieldClass::EconomicResource => out.write_all(b"economicResource")?,
             FieldClass::Quantity => out.write_all(b"quantity")?,
             FieldClass::HasPointInTime => out.write_all(b"hasPointInTime")?,
-            FieldClass::AtLocation => out.write_all(b"atLocation")?,
+            FieldClass::Agent => out.write_all(b"agent")?,
+            FieldClass::Location => out.write_all(b"location")?,
             FieldClass::TrackingIdentifier => out.write_all(b"trackingIdentifier")?,
             FieldClass::Note => out.write_all(b"note")?,
-            FieldClass::ToCompany => out.write_all(b"toCompany")?,
             FieldClass::Custom => out.write_all(b"custom")?,
         }
         Ok(IsNull::No)
@@ -47,13 +49,14 @@ impl ToSql<FieldClassEnum, Pg> for FieldClass {
 impl FromSql<FieldClassEnum, Pg> for FieldClass {
     fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
         match bytes.as_bytes() {
-            b"product" => Ok(FieldClass::Product),
+            b"resourceSpecification" => Ok(FieldClass::ResourceSpecification),
+            b"economicResource" => Ok(FieldClass::EconomicResource),
             b"quantity" => Ok(FieldClass::Quantity),
             b"hasPointInTime" => Ok(FieldClass::HasPointInTime),
-            b"atLocation" => Ok(FieldClass::AtLocation),
+            b"agent" => Ok(FieldClass::Agent),
+            b"location" => Ok(FieldClass::Location),
             b"trackingIdentifier" => Ok(FieldClass::TrackingIdentifier),
             b"note" => Ok(FieldClass::Note),
-            b"toCompany" => Ok(FieldClass::ToCompany),
             b"custom" => Ok(FieldClass::Custom),
             _ => Err("Unrecognized enum variant".into()),
         }
@@ -131,6 +134,7 @@ impl FromSql<FlowThroughEnum, Pg> for FlowThrough {
 pub struct RecipeFlowTemplateDataField {
     pub id: Uuid,
     pub recipe_flow_template_id: Uuid,
+    pub group_id: Option<Uuid>,
     pub field_identifier: String,
     pub field_class: FieldClass,
     pub field: String,
@@ -146,6 +150,7 @@ pub struct RecipeFlowTemplateDataField {
 #[diesel(table_name = recipe_flow_template_data_fields)]
 pub struct NewRecipeFlowTemplateDataField<'a> {
     pub recipe_flow_template_id: &'a Uuid,
+    pub group_id: Option<&'a Uuid>,
     pub field_identifier: &'a str,
     pub field_class: &'a FieldClass,
     pub field: &'a str,
@@ -158,6 +163,7 @@ pub struct NewRecipeFlowTemplateDataField<'a> {
 impl<'a> NewRecipeFlowTemplateDataField<'a> {
     pub fn new(
         recipe_flow_template_id: &'a Uuid,
+        group_id: Option<&'a Uuid>,
         field_identifier: &'a str,
         field_class: &'a FieldClass,
         field: &'a str,
@@ -168,6 +174,7 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
     ) -> Self {
         NewRecipeFlowTemplateDataField {
             recipe_flow_template_id,
+            group_id,
             field_identifier,
             field_class,
             field,

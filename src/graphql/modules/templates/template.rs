@@ -1,22 +1,18 @@
 use crate::{
     db::schema::{
-        recipe_flow_template_data_fields, recipe_flow_templates, recipe_templates,
-        recipe_templates_access,
+        recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_templates, recipe_templates_access
     },
     graphql::context::Context,
     templates::{
         recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
-        },
-        recipe_flow_template_data_field::{
+        }, recipe_flow_template_data_field::{
             FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField,
             RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
-        },
-        recipe_template::{
+        }, recipe_flow_template_group_data_fields::{FieldGroupClass, NewRecipeFlowTemplateGroupDataField, RecipeFlowTemplateGroupDataField}, recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
-        },
-        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess},
+        }, recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess}
     },
 };
 use diesel::prelude::*;
@@ -25,12 +21,20 @@ use juniper::{graphql_value, FieldError, FieldResult};
 use uuid::Uuid;
 
 #[derive(juniper::GraphQLInputObject)]
+pub struct RecipeFlowTemplateGroup {
+    name: String,
+    class: FieldGroupClass,
+    fields: Vec<String>
+}
+
+#[derive(juniper::GraphQLInputObject)]
 pub struct RecipeFlowTemplateArg {
     event_type: EventType,
     role_type: RoleType,
     action: ActionType,
     inherits: Option<bool>,
     data_fields: Vec<RecipeFlowTemplateDataFieldArg>,
+    groups: Vec<RecipeFlowTemplateGroup>
 }
 
 #[derive(juniper::GraphQLInputObject)]
@@ -241,12 +245,31 @@ pub fn create_recipe_template(
             let mut recipe_flow_res =
                 RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
 
+            let mut groups: Vec<(Uuid, Vec<String>)> = Vec::new();
+
+            for group in r.groups {
+
+                let new_group = NewRecipeFlowTemplateGroupDataField::new(&group.name, &group.class);
+
+                let inserted_group: RecipeFlowTemplateGroupDataField = diesel::insert_into(recipe_flow_template_group_data_fields::table)
+                    .values(new_group)
+                    .get_result::<RecipeFlowTemplateGroupDataField>(conn)?;
+
+                groups.push((inserted_group.id, group.fields));
+            }
+
             // Iterate over each data field and add it to the recipe flow
             for rd in r.data_fields {
                 let flow_through_ref: Option<&FlowThrough> = rd.flow_through.as_ref();
 
+                //search in groups if the field identifier is the groups.1 vector and return the group_id
+                let group_id = groups.iter().find(|g| {
+                    g == g
+                });
+
                 let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                     &inserted_recipe_flow_template.id,
+                    None,
                     &rd.field_identifier,
                     &rd.field_class,
                     &rd.field,

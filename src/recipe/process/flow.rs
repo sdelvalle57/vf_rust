@@ -15,9 +15,10 @@ pub struct RecipeProcessFlow {
     pub recipe_flow_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub action: ActionType,
-    pub inherits: Option<bool>
+    pub inherits: Option<bool>,
+    pub action: ActionType
 }
+
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_process_flows)]

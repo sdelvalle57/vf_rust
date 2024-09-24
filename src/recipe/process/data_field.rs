@@ -11,6 +11,7 @@ pub struct RecipeFlowDataField {
     pub id: Uuid,
     pub recipe_process_flow_id: Uuid,
     pub recipe_flow_template_data_field_id: Option<Uuid>,
+    pub group_id: Option<Uuid>,
     pub field_identifier: String,
     pub field_class: FieldClass,
     pub field: String,

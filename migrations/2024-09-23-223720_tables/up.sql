@@ -4,7 +4,18 @@ CREATE TYPE recipe_template_type_enum AS ENUM ('FDA', 'Custom');
 CREATE TYPE event_type_enum AS ENUM ('EconomicEvent');
 CREATE TYPE action_type_enum AS ENUM ('Cite', 'Modify', 'Produce', 'Consume', 'Transfer', 'Use', 'Load', 'Unload', 'Accept', 'Dispatch');
 CREATE TYPE role_type_enum AS ENUM ('Input', 'Output');
-CREATE TYPE field_class_enum AS ENUM ('product', 'quantity', 'hasPointInTime', 'atLocation', 'note', 'trackingIdentifier', 'toCompany', 'custom');
+CREATE TYPE field_class_enum AS ENUM (
+    'resourceSpecification', 
+    'economicResource',
+    'quantity', 
+    'hasPointInTime', 
+    'agent', 
+    'location', 
+    'note', 
+    'trackingIdentifier', 
+    'custom'
+);
+CREATE TYPE field_group_class_enum AS ENUM ('ResourceSpecification', 'EconomicResource', 'Location', 'Custom');
 CREATE TYPE field_type_enum AS ENUM ('Text', 'Date', 'Number', 'Select');
 CREATE TYPE flow_through_enum AS ENUM ('Internal', 'External');
 
@@ -70,10 +81,18 @@ CREATE TABLE IF NOT EXISTS recipe_flow_templates (
     action action_type_enum NOT NULL
 );
 
+-- ProcessFlowTemplateGroupDataFields
+CREATE TABLE IF NOT EXISTS recipe_flow_template_group_data_fields (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    group_class field_group_class_enum NOT NULL
+);
+
 -- ProcessFlowTemplateDataFields
 CREATE TABLE IF NOT EXISTS recipe_flow_template_data_fields (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     recipe_flow_template_id UUID NOT NULL REFERENCES recipe_flow_templates(id),
+    group_id UUID REFERENCES recipe_flow_template_group_data_fields(id),
     field_identifier TEXT NOT NULL,
     field_class field_class_enum NOT NULL,
     field TEXT NOT NULL,
@@ -91,11 +110,14 @@ CREATE TABLE IF NOT EXISTS locations (
     value TEXT NOT NULL
 );
 
--- LotCodeIncrementer
-CREATE TABLE IF NOT EXISTS lot_codes (
+
+-- Counters, product lot_codes and reference_numbers
+CREATE TABLE IF NOT EXISTS counters (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     agent_id UUID NOT NULL REFERENCES agents(id),
-    current_lot_code INTEGER NOT NULL DEFAULT 1
+    lot_code INTEGER NOT NULL DEFAULT 0,
+    reference_number INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Process Map
@@ -121,6 +143,8 @@ CREATE TABLE IF NOT EXISTS recipe_processes (
     recipe_id UUID NOT NULL REFERENCES recipes(id),
     recipe_template_id UUID REFERENCES recipe_templates(id),
     name TEXT NOT NULL,
+    commitment action_type_enum,
+    fulfills UUID REFERENCES recipe_processes(id),
     recipe_type recipe_template_type_enum NOT NULL
 );
 
@@ -138,7 +162,15 @@ CREATE TABLE IF NOT EXISTS recipe_process_flows (
     recipe_flow_template_id UUID NOT NULL REFERENCES recipe_flow_templates(id),
     event_type event_type_enum NOT NULL,
     role_type role_type_enum NOT NULL,
+    inherits BOOLEAN,
     action action_type_enum NOT NULL
+);
+
+-- Process Flow Group Data Fields
+CREATE TABLE IF NOT EXISTS recipe_process_flow_group_data_fields (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    group_class field_group_class_enum NOT NULL
 );
 
 -- Process Flow Data Fields
@@ -146,6 +178,7 @@ CREATE TABLE IF NOT EXISTS recipe_process_flow_data_fields (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     recipe_process_flow_id UUID NOT NULL REFERENCES recipe_process_flows(id),
     recipe_flow_template_data_field_id UUID REFERENCES recipe_flow_template_data_fields(id),
+    group_id UUID REFERENCES recipe_process_flow_group_data_fields(id),
     field_identifier TEXT NOT NULL,
     field_class field_class_enum NOT NULL,
     field TEXT NOT NULL,
@@ -163,15 +196,15 @@ CREATE TABLE IF NOT EXISTS process_executions (
     action action_type_enum NOT NULL,
     role_type role_type_enum NOT NULL,
     resource_specification UUID REFERENCES resource_specifications(id),
-    resource_reference_number INTEGER NOT NULL DEFAULT 1,
-    resource_lot_number INTEGER NOT NULL DEFAULT 1,
-    resource_quantity INTEGER NOT NULL DEFAULT 0,
+    resource_reference_number INTEGER,
+    resource_lot_number INTEGER,
+    resource_quantity INTEGER,
     to_resource_specification UUID REFERENCES resource_specifications(id),
-    to_resource_reference_number INTEGER NOT NULL DEFAULT 1,
-    to_resource_lot_number INTEGER NOT NULL DEFAULT 1,
+    to_resource_reference_number INTEGER,
+    to_resource_lot_number INTEGER,
     provider_agent UUID NOT NULL REFERENCES agents(id),
     receiver_agent UUID NOT NULL REFERENCES agents(id),
-    at_location UUID NOT NULL REFERENCES locations(id),
+    at_location UUID REFERENCES locations(id),
     to_location UUID REFERENCES locations(id),
     has_point_in_time TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -188,3 +221,5 @@ CREATE TABLE IF NOT EXISTS process_execution_custom_values (
     corrects UUID REFERENCES process_execution_custom_values(id),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+

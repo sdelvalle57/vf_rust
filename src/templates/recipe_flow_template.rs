@@ -16,7 +16,7 @@ use crate::db::schema::{recipe_flow_templates, sql_types::ActionTypeEnum};
 use crate::db::schema::sql_types::EventTypeEnum;
 use crate::db::schema::sql_types::RoleTypeEnum;
 
-use super::recipe_flow_template_data_field::RecipeFlowTemplateDataFieldInput;
+use super::{recipe_flow_template_data_field::RecipeFlowTemplateDataFieldInput, recipe_flow_template_group_data_fields::RecipeFlowTemplateGroupDataField};
 
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
@@ -178,6 +178,7 @@ pub struct RecipeFlowTemplateWithDataFields {
     pub role_type: RoleType,
     pub action: ActionType,
     pub inherits: Option<bool>,
+    pub groups: Vec<RecipeFlowTemplateGroupDataField>,
     pub data_fields: Vec<RecipeFlowTemplateDataFieldInput>
 }
 
@@ -190,11 +191,16 @@ impl RecipeFlowTemplateWithDataFields {
             role_type: recipe_flow_template.role_type,
             action: recipe_flow_template.action,
             inherits: recipe_flow_template.inherits,
+            groups: Vec::new(),
             data_fields: Vec::new()
         }
     }
 
     pub fn add_data_field(&mut self, data_field: RecipeFlowTemplateDataFieldInput) {
         self.data_fields.push(data_field);
+    }
+
+    pub fn add_group(&mut self, group: RecipeFlowTemplateGroupDataField) {
+        self.groups.push(group);
     }
 }

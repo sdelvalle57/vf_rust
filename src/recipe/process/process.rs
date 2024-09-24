@@ -16,9 +16,9 @@ pub struct RecipeProcess {
     pub recipe_id: Uuid,
     pub recipe_template_id: Option<Uuid>,
     pub name: String,
-    pub recipe_type: RecipeTemplateType,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
+    pub recipe_type: RecipeTemplateType,
     pub identifier: String,
 }
 
@@ -29,9 +29,9 @@ pub struct NewRecipeProcess<'a> {
     pub recipe_id: &'a Uuid,
     pub recipe_template_id: &'a Uuid,
     pub name: &'a str,
-    pub recipe_type: &'a RecipeTemplateType,
     pub commitment: Option<&'a ActionType>,
     pub fulfills: Option<&'a Uuid>,
+    pub recipe_type: &'a RecipeTemplateType,
     pub identifier: &'a str,
 }
 
@@ -40,18 +40,18 @@ impl<'a>  NewRecipeProcess<'a> {
         recipe_id: &'a Uuid,
         recipe_template_id: &'a Uuid,
         name: &'a str,
-        recipe_type: &'a RecipeTemplateType,
         commitment: Option<&'a ActionType>,
         fulfills: Option<&'a Uuid>,
+        recipe_type: &'a RecipeTemplateType,
         identifier: &'a str
     ) -> Self {
         NewRecipeProcess {
             recipe_id,
             recipe_template_id, 
             name,
-            recipe_type,
             commitment,
             fulfills,
+            recipe_type,
             identifier
         }
     }
@@ -133,6 +133,6 @@ pub struct ProcessFlow {
     pub recipe_flow_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub action: ActionType,
-    pub inherits: Option<bool>
+    pub inherits: Option<bool>,
+    pub action: ActionType
 }

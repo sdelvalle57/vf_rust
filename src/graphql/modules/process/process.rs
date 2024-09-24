@@ -241,9 +241,9 @@ pub fn create_recipe_processes(
                 &recipe_id,
                 &recipe_process.recipe_process.id,
                 &recipe_process.recipe_process.name,
-                &recipe_process.recipe_process.recipe_template_type,
                 recipe_process.recipe_process.commitment.as_ref(),
                 fulfills.as_ref(),
+                &recipe_process.recipe_process.recipe_template_type,
                 &recipe_process.recipe_process.identifier,
             );
 
@@ -409,7 +409,7 @@ pub fn execute_events(
                         let product_field_value = get_field_value(
                             &process_flow,
                             &process_flow_data_fields,
-                            FieldClass::Product,
+                            FieldClass::ResourceSpecification,
                         )?;
                         println!("Product {:?}", product_field_value.1);
 
@@ -543,7 +543,7 @@ fn get_extra_fields(
 ) -> FieldResult<Vec<ExtraField>> {
     let mut res = Vec::new();
     
-    let location_val = get_field(&process_flow, &data_fields, FieldClass::AtLocation)?;
+    let location_val = get_field(&process_flow, &data_fields, FieldClass::Location)?;
     let has_point_in_time_val = get_field(&process_flow, &data_fields, FieldClass::HasPointInTime)?;
     let note_val = get_field(&process_flow, &data_fields, FieldClass::Note)?;
     
