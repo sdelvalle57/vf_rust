@@ -71,6 +71,7 @@ impl MutationRoot {
         recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
         commitment: Option<ActionType>,
         fulfills: Option<String>,
+        trigger: Option<ActionType>
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
         template::create_recipe_template(
             context, 
@@ -79,7 +80,8 @@ impl MutationRoot {
             recipe_template_type, 
             recipe_flow_template_args,
             commitment,
-            fulfills
+            fulfills,
+            trigger
         )
     }
 

@@ -1,18 +1,25 @@
 use crate::{
     db::schema::{
-        recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_templates, recipe_templates_access
+        recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
+        recipe_flow_templates, recipe_templates, recipe_templates_access,
     },
     graphql::context::Context,
     templates::{
         recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
-        }, recipe_flow_template_data_field::{
+        },
+        recipe_flow_template_data_field::{
             FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField,
             RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
-        }, recipe_flow_template_group_data_fields::{FieldGroupClass, NewRecipeFlowTemplateGroupDataField, RecipeFlowTemplateGroupDataField}, recipe_template::{
+        },
+        recipe_flow_template_group_data_fields::{
+            FieldGroupClass, NewRecipeFlowTemplateGroupDataField, RecipeFlowTemplateGroupDataField,
+        },
+        recipe_template::{
             NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
-        }, recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess}
+        },
+        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess},
     },
 };
 use diesel::prelude::*;
@@ -24,7 +31,7 @@ use uuid::Uuid;
 pub struct RecipeFlowTemplateGroup {
     name: String,
     class: FieldGroupClass,
-    fields: Vec<String>
+    fields: Vec<String>,
 }
 
 #[derive(juniper::GraphQLInputObject)]
@@ -32,9 +39,15 @@ pub struct RecipeFlowTemplateArg {
     event_type: EventType,
     role_type: RoleType,
     action: ActionType,
-    inherits: Option<bool>,
     data_fields: Vec<RecipeFlowTemplateDataFieldArg>,
-    groups: Vec<RecipeFlowTemplateGroup>
+    groups: Vec<RecipeFlowTemplateGroup>,
+    identifier: String,
+}
+
+#[derive(juniper::GraphQLInputObject)]
+pub struct FieldInheritance {
+    identifier: String,
+    field: String
 }
 
 #[derive(juniper::GraphQLInputObject)]
@@ -46,6 +59,7 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub note: Option<String>,
     pub required: bool,
     pub flow_through: Option<FlowThrough>,
+    pub inherits: Option<FieldInheritance>
 }
 
 /** Queries */
@@ -172,10 +186,7 @@ pub fn get_templates_access_by_agent(
     Ok(res)
 }
 
-/*
-commitment -> Nullable<ActionTypeEnum>,
-        fulfills -> Nullable<Uuid>,
-*/
+
 pub fn create_recipe_template(
     context: &Context,
     identifier: String,
@@ -184,7 +195,11 @@ pub fn create_recipe_template(
     recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
     commitment: Option<ActionType>,
     fulfills: Option<String>,
+    trigger: Option<ActionType>
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
+    println!("Aca3");
+
+
     let conn = &mut context
         .pool
         .get()
@@ -192,27 +207,29 @@ pub fn create_recipe_template(
 
     // Start a transaction
     conn.transaction::<_, FieldError, _>(|conn| {
+
+
         // Create the new recipe template
         let fulfills_id = if let Some(process_identifier) = fulfills {
             // Attempt to get the recipe by identifier
             let recipe: RecipeTemplate = recipe_templates::table
                 .filter(recipe_templates::identifier.eq(process_identifier))
                 .first::<RecipeTemplate>(conn)?;
-        
+
             // Return the recipe's id wrapped in Some
             Some(recipe.id)
         } else {
             // If fulfills is None, return None
             None
         };
-        
+
         let new_template = NewRecipeTemplate::new(
             &identifier,
-            &name, 
+            &name,
             commitment.as_ref(),
             fulfills_id.as_ref(),
-            &recipe_template_type
-            
+            trigger.as_ref(),
+            &recipe_template_type,
         );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
@@ -224,8 +241,6 @@ pub fn create_recipe_template(
         let mut res: RecipeTemplateWithRecipeFlows =
             RecipeTemplateWithRecipeFlows::new(&inserted_template);
 
-        
-
         // Iterate over each `RecipeFlowTemplateArg`
         for r in recipe_flow_template_args {
             // Create and insert a new recipe flow template
@@ -233,13 +248,14 @@ pub fn create_recipe_template(
                 &inserted_template.id,
                 &r.event_type,
                 &r.role_type,
-                r.inherits.as_ref(),
                 &r.action,
+                &r.identifier
             );
-            
-            let inserted_recipe_flow_template: RecipeFlowTemplate = diesel::insert_into(recipe_flow_templates::table)
-                .values(&new_recipe_flow_template)
-                .get_result::<RecipeFlowTemplate>(conn)?;
+
+            let inserted_recipe_flow_template: RecipeFlowTemplate =
+                diesel::insert_into(recipe_flow_templates::table)
+                    .values(&new_recipe_flow_template)
+                    .get_result::<RecipeFlowTemplate>(conn)?; 
 
             // Initialize `RecipeFlowTemplateWithDataFields` struct
             let mut recipe_flow_res =
@@ -248,35 +264,54 @@ pub fn create_recipe_template(
             let mut groups: Vec<(Uuid, Vec<String>)> = Vec::new();
 
             for group in r.groups {
-
                 let new_group = NewRecipeFlowTemplateGroupDataField::new(&group.name, &group.class);
 
-                let inserted_group: RecipeFlowTemplateGroupDataField = diesel::insert_into(recipe_flow_template_group_data_fields::table)
-                    .values(new_group)
-                    .get_result::<RecipeFlowTemplateGroupDataField>(conn)?;
+                let inserted_group: RecipeFlowTemplateGroupDataField =
+                    diesel::insert_into(recipe_flow_template_group_data_fields::table)
+                        .values(new_group)
+                        .get_result::<RecipeFlowTemplateGroupDataField>(conn)?;
 
                 groups.push((inserted_group.id, group.fields));
             }
 
             // Iterate over each data field and add it to the recipe flow
             for rd in r.data_fields {
-                let flow_through_ref: Option<&FlowThrough> = rd.flow_through.as_ref();
+                
+                let group_id = groups
+                    .iter()
+                    .find(|g| g.1.contains(&rd.field_identifier))
+                    .map(|group| group.0);
 
-                //search in groups if the field identifier is the groups.1 vector and return the group_id
-                let group_id = groups.iter().find(|g| {
-                    g == g
-                });
+
+                let inherits: Option<Uuid> = if let Some(inherits) = rd.inherits {
+                    
+                    //search for the recipe flow template with the identifier
+                    let recipe_flow_template: RecipeFlowTemplate = recipe_flow_templates::table
+                        .filter(recipe_flow_templates::recipe_template_id.eq(&inserted_template.id))
+                        .filter(recipe_flow_templates::identifier.eq(inherits.identifier))
+                        .first::<RecipeFlowTemplate>(conn)?;
+
+                    let field: RecipeFlowTemplateDataField = recipe_flow_template_data_fields::table
+                        .filter(recipe_flow_template_data_fields::recipe_flow_template_id.eq(recipe_flow_template.id))
+                        .filter(recipe_flow_template_data_fields::field_identifier.eq(inherits.field))
+                        .first::<RecipeFlowTemplateDataField>(conn)?;
+                    
+                    Some(field.id)
+                } else {
+                    None
+                };
 
                 let new_recipe_flow_template_data_field = NewRecipeFlowTemplateDataField::new(
                     &inserted_recipe_flow_template.id,
-                    None,
+                    group_id.as_ref(),
                     &rd.field_identifier,
                     &rd.field_class,
                     &rd.field,
                     &rd.field_type,
                     rd.note.as_deref(),
                     &rd.required,
-                    flow_through_ref,
+                    rd.flow_through.as_ref(),
+                    inherits.as_ref()
                 );
 
                 let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =

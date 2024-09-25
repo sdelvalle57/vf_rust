@@ -56,8 +56,10 @@ pub struct RecipeTemplate {
     pub name: String,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
+    pub trigger: Option<ActionType>,
     pub recipe_template_type: RecipeTemplateType
 }
+
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_templates)]
@@ -66,6 +68,7 @@ pub struct NewRecipeTemplate<'a> {
     pub name: &'a str,
     pub commitment: Option<&'a ActionType>,
     pub fulfills: Option<&'a Uuid>,
+    pub trigger: Option<&'a ActionType>,
     pub recipe_template_type: &'a RecipeTemplateType,
 }
 
@@ -75,6 +78,7 @@ impl<'a> NewRecipeTemplate<'a> {
         name: &'a str,
         commitment: Option<&'a ActionType>,
         fulfills: Option<&'a Uuid>,
+        trigger: Option<&'a ActionType>,
         recipe_template_type: &'a RecipeTemplateType
     ) -> Self {
         NewRecipeTemplate {
@@ -82,6 +86,7 @@ impl<'a> NewRecipeTemplate<'a> {
             name,
             commitment,
             fulfills,
+            trigger,
             recipe_template_type
         }
     }
@@ -95,6 +100,7 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
     pub identifier: String,
+    pub trigger: Option<ActionType>,
     pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
 }
 
@@ -107,6 +113,7 @@ impl RecipeTemplateWithRecipeFlows {
             commitment: recipe_template.commitment,
             fulfills: recipe_template.fulfills,
             identifier: recipe_template.identifier.clone(),
+            trigger: recipe_template.trigger,
             recipe_flows: Vec::new()
         }
     }

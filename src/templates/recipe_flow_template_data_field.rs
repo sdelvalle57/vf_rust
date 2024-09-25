@@ -141,7 +141,8 @@ pub struct RecipeFlowTemplateDataField {
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub flow_through: Option<FlowThrough>
+    pub flow_through: Option<FlowThrough>,
+    pub inherits: Option<Uuid>
 }
 
 
@@ -157,7 +158,8 @@ pub struct NewRecipeFlowTemplateDataField<'a> {
     pub field_type: &'a FieldType,
     pub note: Option<&'a str>,
     pub required: &'a bool,
-    pub flow_through: Option<&'a FlowThrough>
+    pub flow_through: Option<&'a FlowThrough>,
+    pub inherits: Option<&'a Uuid>
 }
 
 impl<'a> NewRecipeFlowTemplateDataField<'a> {
@@ -170,7 +172,8 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
         field_type: &'a FieldType,
         note: Option<&'a str>,
         required: &'a bool,
-        flow_through: Option<&'a FlowThrough>
+        flow_through: Option<&'a FlowThrough>,
+        inherits: Option<&'a Uuid>
     ) -> Self {
         NewRecipeFlowTemplateDataField {
             recipe_flow_template_id,
@@ -181,7 +184,8 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
             field_type,
             note,
             required,
-            flow_through
+            flow_through,
+            inherits
         }
     }
 }
@@ -195,7 +199,8 @@ pub struct RecipeFlowTemplateDataFieldInput {
     pub note: Option<String>,
     pub required: bool,
     pub field_identifier: String,
-    pub flow_through: Option<FlowThrough>
+    pub flow_through: Option<FlowThrough>,
+    pub inherits: Option<Uuid>
 }
 
 impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
@@ -210,7 +215,8 @@ impl TryFrom<RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
             note: value.note,
             required: value.required,
             field_identifier: value.field_identifier,
-            flow_through: value.flow_through
+            flow_through: value.flow_through,
+            inherits: value.inherits
         })
     }
 }

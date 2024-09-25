@@ -149,6 +149,7 @@ diesel::table! {
         note -> Nullable<Text>,
         required -> Bool,
         flow_through -> Nullable<FlowThroughEnum>,
+        inherits -> Nullable<Uuid>,
     }
 }
 
@@ -174,8 +175,8 @@ diesel::table! {
         recipe_template_id -> Uuid,
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
-        inherits -> Nullable<Bool>,
         action -> ActionTypeEnum,
+        identifier -> Text,
     }
 }
 
@@ -224,7 +225,6 @@ diesel::table! {
         recipe_flow_template_id -> Uuid,
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
-        inherits -> Nullable<Bool>,
         action -> ActionTypeEnum,
     }
 }
@@ -278,6 +278,7 @@ diesel::table! {
         name -> Text,
         commitment -> Nullable<ActionTypeEnum>,
         fulfills -> Nullable<Uuid>,
+        trigger -> Nullable<ActionTypeEnum>,
         recipe_template_type -> RecipeTemplateTypeEnum,
     }
 }

@@ -133,6 +133,5 @@ pub struct ProcessFlow {
     pub recipe_flow_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub inherits: Option<bool>,
     pub action: ActionType
 }

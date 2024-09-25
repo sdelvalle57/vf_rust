@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS recipe_templates (
     name TEXT NOT NULL,
     commitment action_type_enum,
     fulfills UUID REFERENCES recipe_templates(id),
+    trigger action_type_enum,
     recipe_template_type recipe_template_type_enum NOT NULL
 );
 
@@ -77,8 +78,8 @@ CREATE TABLE IF NOT EXISTS recipe_flow_templates (
     recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
     event_type event_type_enum NOT NULL,
     role_type role_type_enum NOT NULL,
-    inherits BOOLEAN,
-    action action_type_enum NOT NULL
+    action action_type_enum NOT NULL,
+    identifier TEXT NOT NULL UNIQUE
 );
 
 -- ProcessFlowTemplateGroupDataFields
@@ -99,7 +100,8 @@ CREATE TABLE IF NOT EXISTS recipe_flow_template_data_fields (
     field_type field_type_enum NOT NULL,
     note TEXT,
     required BOOLEAN NOT NULL,
-    flow_through flow_through_enum
+    flow_through flow_through_enum,
+    inherits UUID REFERENCES recipe_flow_template_data_fields(id)
 );
 
 -- Locations
@@ -145,7 +147,8 @@ CREATE TABLE IF NOT EXISTS recipe_processes (
     name TEXT NOT NULL,
     commitment action_type_enum,
     fulfills UUID REFERENCES recipe_processes(id),
-    recipe_type recipe_template_type_enum NOT NULL
+    recipe_type recipe_template_type_enum NOT NULL,
+    identifier TEXT NOT NULL UNIQUE
 );
 
 -- Process connection relations
@@ -162,7 +165,6 @@ CREATE TABLE IF NOT EXISTS recipe_process_flows (
     recipe_flow_template_id UUID NOT NULL REFERENCES recipe_flow_templates(id),
     event_type event_type_enum NOT NULL,
     role_type role_type_enum NOT NULL,
-    inherits BOOLEAN,
     action action_type_enum NOT NULL
 );
 
@@ -221,5 +223,3 @@ CREATE TABLE IF NOT EXISTS process_execution_custom_values (
     corrects UUID REFERENCES process_execution_custom_values(id),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-

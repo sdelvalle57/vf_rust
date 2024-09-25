@@ -1,6 +1,5 @@
-use std::fmt::format;
 
-use diesel::{dsl::Field, prelude::*};
+use diesel::prelude::*;
 use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject, GraphQLObject};
 use uuid::Uuid;
 
@@ -279,8 +278,7 @@ pub fn create_recipe_processes(
                     &flow.id,
                     &flow.event_type,
                     &flow.role_type,
-                    &flow.action,
-                    flow.inherits.as_ref(),
+                    &flow.action
                 );
 
                 let inserted_recipe_flow: RecipeProcessFlow =

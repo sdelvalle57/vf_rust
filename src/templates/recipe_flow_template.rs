@@ -136,9 +136,11 @@ pub struct RecipeFlowTemplate {
     pub recipe_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub inherits: Option<bool>,
-    pub action: ActionType
+    pub action: ActionType,
+    pub identifier: String,
 }
+
+
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = recipe_flow_templates)]
@@ -146,8 +148,8 @@ pub struct NewRecipeFlowTemplate<'a> {
     pub recipe_template_id: &'a Uuid,
     pub event_type: &'a EventType,
     pub role_type: &'a RoleType,
-    pub inherits: Option<&'a bool>,
     pub action: &'a ActionType,
+    pub identifier: &'a str
 }
 
 
@@ -156,15 +158,15 @@ impl<'a> NewRecipeFlowTemplate<'a> {
         recipe_template_id: &'a Uuid,
         event_type: &'a EventType,
         role_type: &'a RoleType,
-        inherits: Option<&'a bool>,
         action: &'a ActionType,
+        identifier: &'a str
     ) -> Self {
         NewRecipeFlowTemplate {
             recipe_template_id,
             event_type,
             role_type,
-            inherits,
-            action
+            action,
+            identifier
         }
     }
 }
@@ -177,7 +179,7 @@ pub struct RecipeFlowTemplateWithDataFields {
     pub event_type: EventType,
     pub role_type: RoleType,
     pub action: ActionType,
-    pub inherits: Option<bool>,
+    pub identifier: String,
     pub groups: Vec<RecipeFlowTemplateGroupDataField>,
     pub data_fields: Vec<RecipeFlowTemplateDataFieldInput>
 }
@@ -190,7 +192,7 @@ impl RecipeFlowTemplateWithDataFields {
             event_type: recipe_flow_template.event_type.clone(),
             role_type: recipe_flow_template.role_type,
             action: recipe_flow_template.action,
-            inherits: recipe_flow_template.inherits,
+            identifier: recipe_flow_template.identifier.clone(),
             groups: Vec::new(),
             data_fields: Vec::new()
         }
