@@ -199,6 +199,7 @@ diesel::table! {
         required -> Bool,
         default_value -> Nullable<Text>,
         flow_through -> Nullable<FlowThroughEnum>,
+        inherits -> Nullable<Uuid>,
     }
 }
 
@@ -226,6 +227,7 @@ diesel::table! {
         event_type -> EventTypeEnum,
         role_type -> RoleTypeEnum,
         action -> ActionTypeEnum,
+        identifier -> Text,
     }
 }
 
@@ -253,6 +255,7 @@ diesel::table! {
         fulfills -> Nullable<Uuid>,
         recipe_type -> RecipeTemplateTypeEnum,
         identifier -> Text,
+        trigger -> Nullable<ActionTypeEnum>,
     }
 }
 

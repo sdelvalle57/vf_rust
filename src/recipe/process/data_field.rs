@@ -20,6 +20,7 @@ pub struct RecipeFlowDataField {
     pub required: bool,
     pub default_value: Option<String>,
     pub flow_through: Option<FlowThrough>,
+    pub inherits: Option<Uuid>,
 }
 
 
@@ -36,6 +37,7 @@ pub struct NewRecipeFlowDataField<'a> {
     pub required: bool,
     pub default_value: Option<&'a str>,
     pub flow_through: Option<&'a FlowThrough>,
+    pub inherits: Option<&'a Uuid>
 }
 
 impl<'a>  NewRecipeFlowDataField<'a> {
@@ -50,6 +52,7 @@ impl<'a>  NewRecipeFlowDataField<'a> {
         required: bool,
         default_value: Option<&'a str>,
         flow_through: Option<&'a FlowThrough>,
+        inherits: Option<&'a Uuid>
     ) -> Self {
         NewRecipeFlowDataField {
             recipe_process_flow_id,
@@ -61,7 +64,8 @@ impl<'a>  NewRecipeFlowDataField<'a> {
             note,
             required,
             default_value,
-            flow_through
+            flow_through,
+            inherits
         }
     }
 }

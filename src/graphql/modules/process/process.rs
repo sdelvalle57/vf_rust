@@ -45,6 +45,7 @@ pub struct RecipeWithRecipeFlows {
     pub fulfills: Option<Uuid>,
     pub recipe_flows: Vec<RecipeFlowWithDataFields>,
     pub identifier: String,
+    pub trigger: Option<ActionType>
 }
 
 #[derive(GraphQLInputObject)]
@@ -54,7 +55,7 @@ pub struct RecipeFlowWithDataFields {
     pub event_type: EventType,
     pub role_type: RoleType,
     pub action: ActionType,
-    pub inherits: Option<bool>,
+    pub identifier: String,
     pub data_fields: Vec<RecipeFlowDataFieldInput>,
 }
 
@@ -68,7 +69,7 @@ pub struct RecipeFlowDataFieldInput {
     pub required: bool,
     pub field_identifier: String,
     pub flow_through: Option<FlowThrough>,
-    pub default_value: Option<String>,
+    pub default_value: Option<String>
 }
 
 #[derive(GraphQLObject)]
@@ -186,7 +187,7 @@ pub fn get_recipe_processes(
 }
 
 /** Mutations */
-//TODO: should check for inheritance, commitment and fulfillment
+//TODO: should check for inheritance, commitment, trigger, and fulfillment
 pub fn create_recipe_processes(
     context: &Context,
     recipe_id: Uuid,
@@ -202,7 +203,7 @@ pub fn create_recipe_processes(
             .filter(recipes::id.eq(recipe_id))
             .first::<Recipe>(conn)?;
 
-        let recipe_resources: Vec<RecipeResource> = recipe_resources::table
+        let recipe_resources: Vec<RecipeResource> = recipe_resources::table 
             .filter(recipe_resources::recipe_id.eq(recipe_id))
             .load::<RecipeResource>(conn)?;
 
@@ -223,7 +224,7 @@ pub fn create_recipe_processes(
                     //get the identifier
                     let recipe_process_template: RecipeTemplate = recipe_templates::table
                         .filter(recipe_templates::id.eq(fulfills_value))
-                        .first::<RecipeTemplate>(conn)?;
+                        .first::<RecipeTemplate>(conn)?; 
 
                     //search for the identifier in the recipe_process table
                     let recipe_process: RecipeProcess = recipe_processes::table
@@ -244,6 +245,7 @@ pub fn create_recipe_processes(
                 fulfills.as_ref(),
                 &recipe_process.recipe_process.recipe_template_type,
                 &recipe_process.recipe_process.identifier,
+                recipe_process.recipe_process.trigger.as_ref()
             );
 
             let inserted_recipe_process: RecipeProcess =
@@ -254,6 +256,7 @@ pub fn create_recipe_processes(
             let mut recipe_process_response: RecipeProcessResponse =
                 RecipeProcessResponse::new(inserted_recipe_process.clone());
 
+            //Insert in relations table
             for output_of in recipe_process.output_of {
                 let process_output_of: RecipeProcess = recipe_processes::table
                     .filter(recipe_processes::recipe_id.eq(&recipe_id))
@@ -278,7 +281,8 @@ pub fn create_recipe_processes(
                     &flow.id,
                     &flow.event_type,
                     &flow.role_type,
-                    &flow.action
+                    &flow.action,
+                    &flow.identifier
                 );
 
                 let inserted_recipe_flow: RecipeProcessFlow =
@@ -295,24 +299,27 @@ pub fn create_recipe_processes(
 
                     let flow_through_ref: Option<&FlowThrough> = data_field.flow_through.as_ref();
 
+                    //TODO: check inheritance
+
                     //check this, check on default value
                     let new_data_field = NewRecipeFlowDataField::new(
                         &inserted_recipe_flow.id,
-                        data_field_id, // Wrap Uuid in Some if necessary
+                        data_field_id, 
                         &data_field.field_identifier,
                         &data_field.field_class,
                         &data_field.field,
                         &data_field.field_type,
-                        data_field.note.as_deref(), // Safely handle Option<&str> for note
+                        data_field.note.as_deref(), 
                         data_field.required,
-                        data_field.default_value.as_deref(), // Convert Uuid to String if needed
+                        data_field.default_value.as_deref(), 
                         flow_through_ref,
+                        None
                     );
 
                     let inserted_data_field: RecipeFlowDataField =
                         diesel::insert_into(recipe_process_flow_data_fields::table)
                             .values(new_data_field)
-                            .get_result(conn)?;
+                            .get_result(conn)?; 
 
                     println!(
                         "{} {:?} {} {:?}",

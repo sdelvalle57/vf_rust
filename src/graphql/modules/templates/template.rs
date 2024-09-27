@@ -47,7 +47,7 @@ pub struct RecipeFlowTemplateArg {
 #[derive(juniper::GraphQLInputObject)]
 pub struct FieldInheritance {
     identifier: String,
-    field: String
+    field: String,
 }
 
 #[derive(juniper::GraphQLInputObject)]
@@ -59,7 +59,7 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub note: Option<String>,
     pub required: bool,
     pub flow_through: Option<FlowThrough>,
-    pub inherits: Option<FieldInheritance>
+    pub inherits: Option<FieldInheritance>,
 }
 
 /** Queries */
@@ -186,7 +186,6 @@ pub fn get_templates_access_by_agent(
     Ok(res)
 }
 
-
 pub fn create_recipe_template(
     context: &Context,
     identifier: String,
@@ -195,11 +194,8 @@ pub fn create_recipe_template(
     recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
     commitment: Option<ActionType>,
     fulfills: Option<String>,
-    trigger: Option<ActionType>
+    trigger: Option<ActionType>,
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
-    println!("Aca3");
-
-
     let conn = &mut context
         .pool
         .get()
@@ -207,8 +203,6 @@ pub fn create_recipe_template(
 
     // Start a transaction
     conn.transaction::<_, FieldError, _>(|conn| {
-
-
         // Create the new recipe template
         let fulfills_id = if let Some(process_identifier) = fulfills {
             // Attempt to get the recipe by identifier
@@ -249,13 +243,13 @@ pub fn create_recipe_template(
                 &r.event_type,
                 &r.role_type,
                 &r.action,
-                &r.identifier
+                &r.identifier,
             );
 
             let inserted_recipe_flow_template: RecipeFlowTemplate =
                 diesel::insert_into(recipe_flow_templates::table)
                     .values(&new_recipe_flow_template)
-                    .get_result::<RecipeFlowTemplate>(conn)?; 
+                    .get_result::<RecipeFlowTemplate>(conn)?;
 
             // Initialize `RecipeFlowTemplateWithDataFields` struct
             let mut recipe_flow_res =
@@ -271,31 +265,42 @@ pub fn create_recipe_template(
                         .values(new_group)
                         .get_result::<RecipeFlowTemplateGroupDataField>(conn)?;
 
-                groups.push((inserted_group.id, group.fields));
+                let separated_fields: Vec<String> = group
+                    .fields
+                    .iter()
+                    .flat_map(|field| field.split(", ").map(String::from).collect::<Vec<String>>()) // Split by ", " and collect into a Vec<String>
+                    .collect();
+
+                groups.push((inserted_group.id, separated_fields));
             }
 
             // Iterate over each data field and add it to the recipe flow
             for rd in r.data_fields {
-                
+
                 let group_id = groups
                     .iter()
                     .find(|g| g.1.contains(&rd.field_identifier))
                     .map(|group| group.0);
 
-
                 let inherits: Option<Uuid> = if let Some(inherits) = rd.inherits {
-                    
                     //search for the recipe flow template with the identifier
                     let recipe_flow_template: RecipeFlowTemplate = recipe_flow_templates::table
                         .filter(recipe_flow_templates::recipe_template_id.eq(&inserted_template.id))
                         .filter(recipe_flow_templates::identifier.eq(inherits.identifier))
                         .first::<RecipeFlowTemplate>(conn)?;
 
-                    let field: RecipeFlowTemplateDataField = recipe_flow_template_data_fields::table
-                        .filter(recipe_flow_template_data_fields::recipe_flow_template_id.eq(recipe_flow_template.id))
-                        .filter(recipe_flow_template_data_fields::field_identifier.eq(inherits.field))
-                        .first::<RecipeFlowTemplateDataField>(conn)?;
-                    
+                    let field: RecipeFlowTemplateDataField =
+                        recipe_flow_template_data_fields::table
+                            .filter(
+                                recipe_flow_template_data_fields::recipe_flow_template_id
+                                    .eq(recipe_flow_template.id),
+                            )
+                            .filter(
+                                recipe_flow_template_data_fields::field_identifier
+                                    .eq(inherits.field),
+                            )
+                            .first::<RecipeFlowTemplateDataField>(conn)?;
+
                     Some(field.id)
                 } else {
                     None
@@ -311,7 +316,7 @@ pub fn create_recipe_template(
                     rd.note.as_deref(),
                     &rd.required,
                     rd.flow_through.as_ref(),
-                    inherits.as_ref()
+                    inherits.as_ref(),
                 );
 
                 let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
@@ -369,4 +374,74 @@ pub fn assign_template_to_agent(
         .get_result::<RecipeTemplateAccess>(conn)?;
 
     Ok(res)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use super::*;
+    use diesel::prelude::*;
+    use diesel::r2d2;
+    use diesel::r2d2::ConnectionManager;
+    use diesel::result::Error as DieselError;
+    use diesel::PgConnection;
+
+    use crate::db::schema::{
+        recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
+        recipe_flow_templates, recipe_templates_access
+    };
+
+    // Initialize the pool for testing purposes
+    fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
+        let database_url = "postgres://value_flows:valueflows@localhost/vf24";
+        let manager = ConnectionManager::<PgConnection>::new(database_url);
+        r2d2::Pool::builder()
+            .build(manager)
+            .expect("Failed to create pool.")
+    }
+
+    #[test]
+    fn logic_delete() {
+        // Use the test pool instead of `context.pool`
+        let pool = get_test_pool();
+        let conn = &mut pool.get().expect("Failed to get DB connection from pool");
+
+        let result = conn.transaction::<_, DieselError, _>(|conn| {
+            //Delete recipe_flow_template_data_fields
+            diesel::delete(recipe_flow_template_data_fields::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_flow_template_data_fields::table
+                .count()
+                .get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipe_flow_templates
+            diesel::delete(recipe_flow_templates::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_flow_templates::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipe_flow_template_group_data_fields
+            diesel::delete(recipe_flow_template_group_data_fields::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_flow_template_group_data_fields::table
+                .count()
+                .get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+             //Delete recipe_templates_access
+             diesel::delete(recipe_templates_access::table).execute(conn)?;
+             let remaining_rows: i64 = recipe_templates_access::table
+                 .count()
+                 .get_result(conn)?;
+             assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipe_templates
+            diesel::delete(recipe_templates::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_templates::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            Ok(())
+        });
+
+        assert!(result.is_ok(), "Transaction failed: {:?}", result);
+    }
 }

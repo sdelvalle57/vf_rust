@@ -15,7 +15,8 @@ pub struct RecipeProcessFlow {
     pub recipe_flow_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub action: ActionType
+    pub action: ActionType,
+    pub identifier: String
 }
 
 
@@ -26,7 +27,8 @@ pub struct NewRecipeProcessFlow<'a> {
     pub recipe_flow_template_id: &'a Uuid,
     pub event_type: &'a EventType,
     pub role_type: &'a RoleType,
-    pub action: &'a ActionType
+    pub action: &'a ActionType,
+    pub identifier: &'a str
 }
 
 impl<'a>  NewRecipeProcessFlow<'a> {
@@ -35,14 +37,16 @@ impl<'a>  NewRecipeProcessFlow<'a> {
         recipe_flow_template_id: &'a Uuid,
         event_type: &'a EventType,
         role_type: &'a RoleType,
-        action: &'a ActionType
+        action: &'a ActionType,
+        identifier: &'a str
     ) -> Self {
         NewRecipeProcessFlow {
             recipe_process_id,
             recipe_flow_template_id, 
             event_type,
             role_type,
-            action
+            action,
+            identifier
         }
     }
 }
@@ -54,6 +58,7 @@ pub struct RecipeProcessFlowResponse {
     pub event_type: EventType,
     pub role_type: RoleType,
     pub action: ActionType,
+    pub identifier: String,
     pub data_fields: Vec<RecipeFlowDataField>
 }
 
@@ -64,6 +69,7 @@ impl RecipeProcessFlowResponse {
             event_type: recipe_process_flow.event_type,
             role_type: recipe_process_flow.role_type,
             action: recipe_process_flow.action,
+            identifier: recipe_process_flow.identifier,
             data_fields: Vec::new()
         }
     }

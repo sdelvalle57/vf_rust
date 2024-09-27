@@ -15,4 +15,6 @@ async fn main() -> std::io::Result<()> {
 
     // Start the GraphQL server with the connection pool
     handler::start_server(pool).await
+
+    
 }

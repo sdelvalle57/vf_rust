@@ -20,8 +20,8 @@ pub struct RecipeProcess {
     pub fulfills: Option<Uuid>,
     pub recipe_type: RecipeTemplateType,
     pub identifier: String,
+    pub trigger: Option<ActionType>
 }
-
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_processes)]
@@ -33,6 +33,7 @@ pub struct NewRecipeProcess<'a> {
     pub fulfills: Option<&'a Uuid>,
     pub recipe_type: &'a RecipeTemplateType,
     pub identifier: &'a str,
+    pub trigger: Option<&'a ActionType>
 }
 
 impl<'a>  NewRecipeProcess<'a> {
@@ -43,7 +44,8 @@ impl<'a>  NewRecipeProcess<'a> {
         commitment: Option<&'a ActionType>,
         fulfills: Option<&'a Uuid>,
         recipe_type: &'a RecipeTemplateType,
-        identifier: &'a str
+        identifier: &'a str,
+        trigger: Option<&'a ActionType>
     ) -> Self {
         NewRecipeProcess {
             recipe_id,
@@ -52,7 +54,8 @@ impl<'a>  NewRecipeProcess<'a> {
             commitment,
             fulfills,
             recipe_type,
-            identifier
+            identifier,
+            trigger
         }
     }
 }
@@ -133,5 +136,6 @@ pub struct ProcessFlow {
     pub recipe_flow_template_id: Uuid,
     pub event_type: EventType,
     pub role_type: RoleType,
-    pub action: ActionType
+    pub action: ActionType,
+    pub identifier: String
 }
