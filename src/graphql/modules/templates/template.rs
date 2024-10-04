@@ -1,7 +1,8 @@
 use crate::{
     db::schema::{
         recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
-        recipe_flow_templates, recipe_templates, recipe_templates_access,
+        recipe_flow_templates, recipe_process_flow_group_data_fields, recipe_templates,
+        recipe_templates_access,
     },
     graphql::context::Context,
     templates::{
@@ -84,14 +85,23 @@ fn get_recipe_flow_template_data_fields(
             )
             .load::<RecipeFlowTemplateDataField>(conn)?;
 
-    for rftdf in recipe_flow_template_data_fields {
+    for rftdf in &recipe_flow_template_data_fields {
+        // If possible, adjust `try_into()` to accept a reference instead
         let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput = rftdf
-            .try_into()
+            .try_into() // Ensure this conversion works with a reference
             .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
 
         recipe_flow_remplate_data_fields.add_data_field(recipe_flow_template_data_field_input);
-    }
 
+
+        if let Some(group_id) = rftdf.group_id {
+            let group =
+                recipe_flow_template_group_data_fields::table
+                    .filter(recipe_flow_template_group_data_fields::id.eq(group_id))
+                    .first::<RecipeFlowTemplateGroupDataField>(conn)?;
+            recipe_flow_remplate_data_fields.add_group(group);
+        }
+    }
     Ok(recipe_flow_remplate_data_fields)
 }
 
@@ -276,7 +286,6 @@ pub fn create_recipe_template(
 
             // Iterate over each data field and add it to the recipe flow
             for rd in r.data_fields {
-
                 let group_id = groups
                     .iter()
                     .find(|g| g.1.contains(&rd.field_identifier))
@@ -326,14 +335,22 @@ pub fn create_recipe_template(
                         .map_err(|e| FieldError::new(e, juniper::Value::null()))?; // Map diesel::result::Error to FieldError
 
                 let recipe_flow_template_data_field_input: RecipeFlowTemplateDataFieldInput =
-                    inserted_recipe_flow_template_data_field
+                    (&inserted_recipe_flow_template_data_field)
                         .try_into()
                         .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
 
                 // Add the data field to the recipe flow
                 recipe_flow_res.add_data_field(recipe_flow_template_data_field_input);
-            }
 
+                if let Some(group_id) = group_id {
+                    let group: RecipeFlowTemplateGroupDataField =
+                        recipe_process_flow_group_data_fields::table
+                            .filter(recipe_process_flow_group_data_fields::id.eq(group_id))
+                            .first::<RecipeFlowTemplateGroupDataField>(conn)?;
+        
+                    recipe_flow_res.add_group(group);
+                }
+            }
             // Add the complete `recipe_flow_res` to the result
             res.add_recipe_flow(recipe_flow_res);
         }
@@ -389,7 +406,7 @@ mod tests {
 
     use crate::db::schema::{
         recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
-        recipe_flow_templates, recipe_templates_access
+        recipe_flow_templates, recipe_templates_access,
     };
 
     // Initialize the pool for testing purposes
@@ -427,12 +444,10 @@ mod tests {
                 .get_result(conn)?;
             assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
 
-             //Delete recipe_templates_access
-             diesel::delete(recipe_templates_access::table).execute(conn)?;
-             let remaining_rows: i64 = recipe_templates_access::table
-                 .count()
-                 .get_result(conn)?;
-             assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+            //Delete recipe_templates_access
+            diesel::delete(recipe_templates_access::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_templates_access::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
 
             //Delete recipe_templates
             diesel::delete(recipe_templates::table).execute(conn)?;
