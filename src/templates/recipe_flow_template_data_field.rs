@@ -193,15 +193,18 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
 #[derive(juniper::GraphQLObject, Debug, Clone)]
 pub struct RecipeFlowTemplateDataFieldInput {
     pub id: Uuid,
+    pub recipe_flow_template_id: Uuid,
+    pub group_id: Option<Uuid>,
+    pub field_identifier: String,
     pub field_class: FieldClass,
     pub field: String,
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub field_identifier: String,
     pub flow_through: Option<FlowThrough>,
     pub inherits: Option<Uuid>
 }
+
 
 impl TryFrom<&RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput {
     type Error = String; // Define your error type here
@@ -209,12 +212,14 @@ impl TryFrom<&RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput 
     fn try_from(value: &RecipeFlowTemplateDataField) -> Result<Self, Self::Error> {
         Ok(RecipeFlowTemplateDataFieldInput {
             id: value.id,
+            recipe_flow_template_id: value.recipe_flow_template_id,
+            group_id: value.group_id,
+            field_identifier: value.field_identifier.clone(),
             field_class: value.field_class.clone(),
             field: value.field.clone(),
             field_type: value.field_type.clone(),
             note: value.note.clone(),
             required: value.required,
-            field_identifier: value.field_identifier.clone(),
             flow_through: value.flow_through.clone(),
             inherits: value.inherits
         })

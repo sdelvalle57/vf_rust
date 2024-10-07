@@ -93,12 +93,10 @@ fn get_recipe_flow_template_data_fields(
 
         recipe_flow_remplate_data_fields.add_data_field(recipe_flow_template_data_field_input);
 
-
         if let Some(group_id) = rftdf.group_id {
-            let group =
-                recipe_flow_template_group_data_fields::table
-                    .filter(recipe_flow_template_group_data_fields::id.eq(group_id))
-                    .first::<RecipeFlowTemplateGroupDataField>(conn)?;
+            let group = recipe_flow_template_group_data_fields::table
+                .filter(recipe_flow_template_group_data_fields::id.eq(group_id))
+                .first::<RecipeFlowTemplateGroupDataField>(conn)?;
             recipe_flow_remplate_data_fields.add_group(group);
         }
     }
@@ -347,7 +345,7 @@ pub fn create_recipe_template(
                         recipe_process_flow_group_data_fields::table
                             .filter(recipe_process_flow_group_data_fields::id.eq(group_id))
                             .first::<RecipeFlowTemplateGroupDataField>(conn)?;
-        
+
                     recipe_flow_res.add_group(group);
                 }
             }

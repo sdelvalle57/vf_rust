@@ -203,6 +203,10 @@ impl RecipeFlowTemplateWithDataFields {
     }
 
     pub fn add_group(&mut self, group: RecipeFlowTemplateGroupDataField) {
-        self.groups.push(group);
+        let found_group = self.groups.iter().find(|g| g.id == group.id);
+        if let None = found_group {
+            self.groups.push(group);
+        }
+        
     }
 }
