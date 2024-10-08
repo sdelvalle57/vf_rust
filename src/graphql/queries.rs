@@ -1,9 +1,6 @@
 use crate::{
     common::{
-        location::Location,
-        agent::Agent,
-        economic_resource::{EconomicResource, EconomicResourceWithSpec},
-        resource_specification::ResourceSpecification,
+        agent::{Agent, AgentWithLocations}, economic_resource::{EconomicResource, EconomicResourceWithSpec}, location::Location, resource_specification::ResourceSpecification
     },
     graphql::context::Context,
     recipe::recipe::RecipeWithResources,
@@ -27,6 +24,10 @@ impl QueryRoot {
 
     fn agent_by_id(context: &Context, agent_id: Uuid) -> FieldResult<Agent> {
         agent::agent_by_id(&context, agent_id)
+    }
+
+    fn agents_with_location(context: &Context) -> FieldResult<Vec<AgentWithLocations>> {
+        agent::agents_with_location(&context)
     }
 
     /*** Resource Specifications */

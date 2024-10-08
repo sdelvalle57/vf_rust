@@ -24,9 +24,7 @@ use crate::{
         recipe::{Recipe, RecipeResource},
     },
     templates::{
-        recipe_flow_template::{ActionType, EventType, RoleType},
-        recipe_flow_template_data_field::{FieldClass, FieldType, FlowThrough},
-        recipe_template::{RecipeTemplate, RecipeTemplateType},
+        recipe_flow_template::{ActionType, EventType, RoleType}, recipe_flow_template_data_field::{FieldClass, FieldType, FlowThrough}, recipe_flow_template_group_data_fields::FieldGroupClass, recipe_template::{RecipeTemplate, RecipeTemplateType}
     },
 };
 
@@ -49,6 +47,13 @@ pub struct RecipeWithRecipeFlows {
 }
 
 #[derive(GraphQLInputObject)]
+pub struct RecipeFlowGroupDataField {
+    pub id: Uuid,
+    pub name: String,
+    pub group_class: FieldGroupClass
+}
+
+#[derive(GraphQLInputObject)]
 pub struct RecipeFlowWithDataFields {
     pub id: Uuid,
     pub recipe_template_id: Uuid,
@@ -56,18 +61,23 @@ pub struct RecipeFlowWithDataFields {
     pub role_type: RoleType,
     pub action: ActionType,
     pub identifier: String,
+    pub groups: Vec<RecipeFlowGroupDataField>,
     pub data_fields: Vec<RecipeFlowDataFieldInput>,
 }
+
 
 #[derive(GraphQLInputObject)]
 pub struct RecipeFlowDataFieldInput {
     pub id: Option<Uuid>,
+    pub recipe_flow_template_id: Uuid,
+    pub group_id: Option<Uuid>,
+    pub field_identifier: String,
     pub field_class: FieldClass,
     pub field: String,
     pub field_type: FieldType,
     pub note: Option<String>,
     pub required: bool,
-    pub field_identifier: String,
+    
     pub flow_through: Option<FlowThrough>,
     pub default_value: Option<String>
 }

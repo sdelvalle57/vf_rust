@@ -4,6 +4,7 @@ use juniper::GraphQLObject;
 use uuid::Uuid;
 
 use crate::db::schema::agents;
+use super::location::Location;
 
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = agents)]
@@ -34,3 +35,30 @@ impl<'a> NewAgent<'a> {
     }
 }
 
+#[derive(juniper::GraphQLObject, Debug)]
+pub struct AgentLocation {
+    pub id: Uuid,
+    pub name: String,
+    pub value: String
+}
+
+#[derive(juniper::GraphQLObject, Debug)]
+pub struct AgentWithLocations {
+    pub id: Uuid,
+    pub name: String,
+    pub locations: Vec<AgentLocation>
+}
+
+impl AgentWithLocations {
+    pub fn new(id: Uuid, name: String, locations: Vec<Location>) -> Self {
+        AgentWithLocations {
+            id,
+            name,
+            locations: locations.into_iter().map(|l: Location| AgentLocation {
+                id: l.id,
+                name: l.name,
+                value: l.value
+            }).collect(), // Collect the iterator back into a Vec
+        }
+    }
+}

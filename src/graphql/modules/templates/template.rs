@@ -243,6 +243,8 @@ pub fn create_recipe_template(
         let mut res: RecipeTemplateWithRecipeFlows =
             RecipeTemplateWithRecipeFlows::new(&inserted_template);
 
+        println!("inserted_template: {:?}", inserted_template);
+
         // Iterate over each `RecipeFlowTemplateArg`
         for r in recipe_flow_template_args {
             // Create and insert a new recipe flow template
@@ -265,6 +267,8 @@ pub fn create_recipe_template(
 
             let mut groups: Vec<(Uuid, Vec<String>)> = Vec::new();
 
+            println!("inserted_recipe_flow_template: {:?}", inserted_recipe_flow_template);
+
             for group in r.groups {
                 let new_group = NewRecipeFlowTemplateGroupDataField::new(&group.name, &group.class);
 
@@ -281,6 +285,8 @@ pub fn create_recipe_template(
 
                 groups.push((inserted_group.id, separated_fields));
             }
+
+            println!("groups: {:?}", groups);
 
             // Iterate over each data field and add it to the recipe flow
             for rd in r.data_fields {
@@ -340,20 +346,20 @@ pub fn create_recipe_template(
                 // Add the data field to the recipe flow
                 recipe_flow_res.add_data_field(recipe_flow_template_data_field_input);
 
+                println!("inserted_recipe_flow_template_data_field: {:?}", inserted_recipe_flow_template_data_field);
+
                 if let Some(group_id) = group_id {
                     let group: RecipeFlowTemplateGroupDataField =
-                        recipe_process_flow_group_data_fields::table
-                            .filter(recipe_process_flow_group_data_fields::id.eq(group_id))
+                        recipe_flow_template_group_data_fields::table
+                            .filter(recipe_flow_template_group_data_fields::id.eq(group_id))
                             .first::<RecipeFlowTemplateGroupDataField>(conn)?;
 
                     recipe_flow_res.add_group(group);
                 }
             }
-            // Add the complete `recipe_flow_res` to the result
             res.add_recipe_flow(recipe_flow_res);
         }
 
-        // If all succeeds, return the result
         Ok(res)
     })
 }
