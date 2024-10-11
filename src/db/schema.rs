@@ -26,16 +26,20 @@ pub mod sql_types {
     pub struct FlowThroughEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "recipe_template_type_enum"))]
-    pub struct RecipeTemplateTypeEnum;
-
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "resource_type_enum"))]
     pub struct ResourceTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "restriction_enum"))]
+    pub struct RestrictionEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "role_type_enum"))]
     pub struct RoleTypeEnum;
+
+    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "template_type_enum"))]
+    pub struct TemplateTypeEnum;
 }
 
 diesel::table! {
@@ -88,6 +92,18 @@ diesel::table! {
         agent_id -> Uuid,
         name -> Text,
         value -> Text,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::TemplateTypeEnum;
+
+    map_templates (id) {
+        id -> Uuid,
+        name -> Text,
+        #[sql_name = "type"]
+        type_ -> TemplateTypeEnum,
     }
 }
 
@@ -150,6 +166,7 @@ diesel::table! {
         required -> Bool,
         flow_through -> Nullable<FlowThroughEnum>,
         inherits -> Nullable<Uuid>,
+        accept_default -> Bool,
     }
 }
 
@@ -244,7 +261,6 @@ diesel::table! {
 diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::ActionTypeEnum;
-    use super::sql_types::RecipeTemplateTypeEnum;
 
     recipe_processes (id) {
         id -> Uuid,
@@ -253,7 +269,6 @@ diesel::table! {
         name -> Text,
         commitment -> Nullable<ActionTypeEnum>,
         fulfills -> Nullable<Uuid>,
-        recipe_type -> RecipeTemplateTypeEnum,
         identifier -> Text,
         trigger -> Nullable<ActionTypeEnum>,
     }
@@ -272,17 +287,29 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
+    use super::sql_types::RestrictionEnum;
+
+    recipe_template_blacklists (id) {
+        id -> Int4,
+        map_template_id -> Uuid,
+        recipe_template_id -> Uuid,
+        restricted_recipe_template_id -> Uuid,
+        restriction_type -> RestrictionEnum,
+    }
+}
+
+diesel::table! {
+    use diesel::sql_types::*;
     use super::sql_types::ActionTypeEnum;
-    use super::sql_types::RecipeTemplateTypeEnum;
 
     recipe_templates (id) {
         id -> Uuid,
+        map_template_id -> Uuid,
         identifier -> Text,
         name -> Text,
         commitment -> Nullable<ActionTypeEnum>,
         fulfills -> Nullable<Uuid>,
         trigger -> Nullable<ActionTypeEnum>,
-        recipe_template_type -> RecipeTemplateTypeEnum,
     }
 }
 
@@ -341,6 +368,8 @@ diesel::joinable!(recipe_processes -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_processes -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> resource_specifications (resource_specification_id));
+diesel::joinable!(recipe_template_blacklists -> map_templates (map_template_id));
+diesel::joinable!(recipe_templates -> map_templates (map_template_id));
 diesel::joinable!(recipe_templates_access -> agents (agent_id));
 diesel::joinable!(recipe_templates_access -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipes -> agents (agent_id));
@@ -351,6 +380,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     counters,
     economic_resources,
     locations,
+    map_templates,
     process_execution_custom_values,
     process_executions,
     recipe_flow_template_data_fields,
@@ -362,6 +392,7 @@ diesel::allow_tables_to_appear_in_same_query!(
     recipe_process_relations,
     recipe_processes,
     recipe_resources,
+    recipe_template_blacklists,
     recipe_templates,
     recipe_templates_access,
     recipes,

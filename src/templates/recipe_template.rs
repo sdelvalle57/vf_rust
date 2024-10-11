@@ -1,49 +1,15 @@
-use std::io::Write;
 
 use diesel::{
-    deserialize::{self, FromSql, FromSqlRow}, 
-    expression::AsExpression, 
-    pg::{Pg, PgValue}, 
-    serialize::{self, IsNull, Output, ToSql}, 
     Insertable, 
     Queryable
 };
-use juniper::{GraphQLEnum, GraphQLObject};
+use juniper::GraphQLObject;
 use uuid::Uuid;
 
 use crate::db::schema::recipe_templates;
 
-use crate::db::schema::sql_types::RecipeTemplateTypeEnum;
 
 use super::recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields};
-
-
-#[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
-#[diesel(sql_type = RecipeTemplateTypeEnum)]
-pub enum RecipeTemplateType {
-    FDA,
-    Custom
-}
-
-impl ToSql<RecipeTemplateTypeEnum, Pg> for RecipeTemplateType {
-    fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, Pg>) -> serialize::Result {
-        match *self {
-            RecipeTemplateType::Custom => out.write_all(b"Custom")?,
-            RecipeTemplateType::FDA => out.write_all(b"FDA")?,
-        }
-        Ok(IsNull::No)
-    }
-}
-
-impl FromSql<RecipeTemplateTypeEnum, Pg> for RecipeTemplateType {
-    fn from_sql(bytes: PgValue<'_>) -> deserialize::Result<Self> {
-        match bytes.as_bytes() {
-            b"Custom" => Ok(RecipeTemplateType::Custom),
-            b"FDA" => Ok(RecipeTemplateType::FDA),
-            _ => Err("Unrecognized enum variant".into()),
-        }
-    }
-}
 
 
 #[derive(Queryable, GraphQLObject, Debug)]
@@ -52,51 +18,53 @@ impl FromSql<RecipeTemplateTypeEnum, Pg> for RecipeTemplateType {
 
 pub struct RecipeTemplate {
     pub id: Uuid,
+    pub map_template_id: Uuid,
     pub identifier: String,
     pub name: String,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
-    pub trigger: Option<ActionType>,
-    pub recipe_template_type: RecipeTemplateType
+    pub trigger: Option<ActionType>
 }
 
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_templates)]
 pub struct NewRecipeTemplate<'a> {
+    pub map_template_id: &'a Uuid,
     pub identifier: &'a str,
     pub name: &'a str,
     pub commitment: Option<&'a ActionType>,
     pub fulfills: Option<&'a Uuid>,
-    pub trigger: Option<&'a ActionType>,
-    pub recipe_template_type: &'a RecipeTemplateType,
+    pub trigger: Option<&'a ActionType>
 }
 
 impl<'a> NewRecipeTemplate<'a> {
     pub fn new(
+        map_template_id: &'a Uuid,
         identifier: &'a str,
         name: &'a str,
         commitment: Option<&'a ActionType>,
         fulfills: Option<&'a Uuid>,
-        trigger: Option<&'a ActionType>,
-        recipe_template_type: &'a RecipeTemplateType
+        trigger: Option<&'a ActionType>
     ) -> Self {
         NewRecipeTemplate {
+            map_template_id,
             identifier,
             name,
             commitment,
             fulfills,
-            trigger,
-            recipe_template_type
+            trigger
         }
     }
 }
 
+
+
 #[derive(juniper::GraphQLObject, Debug)]
 pub struct RecipeTemplateWithRecipeFlows {
     pub id: Uuid,
+    pub map_template_id: Uuid,
     pub name: String,
-    pub recipe_template_type: RecipeTemplateType,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
     pub identifier: String,
@@ -107,9 +75,9 @@ pub struct RecipeTemplateWithRecipeFlows {
 impl RecipeTemplateWithRecipeFlows {
     pub fn new(recipe_template: & RecipeTemplate) -> Self {
         RecipeTemplateWithRecipeFlows {
+            map_template_id: recipe_template.map_template_id,
             id: recipe_template.id,
             name: recipe_template.name.clone(),
-            recipe_template_type: recipe_template.recipe_template_type.clone(),
             commitment: recipe_template.commitment,
             fulfills: recipe_template.fulfills,
             identifier: recipe_template.identifier.clone(),

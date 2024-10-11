@@ -21,7 +21,8 @@ pub enum FieldGroupClass {
     ResourceSpecification,
     EconomicResource,
     Location,
-    Custom
+    Custom,
+    ReferenceDocument
 }
 
 impl ToSql<FieldGroupClassEnum, Pg> for FieldGroupClass {
@@ -31,6 +32,7 @@ impl ToSql<FieldGroupClassEnum, Pg> for FieldGroupClass {
             FieldGroupClass::EconomicResource => out.write_all(b"EconomicResource")?,
             FieldGroupClass::Location => out.write_all(b"Location")?,
             FieldGroupClass::Custom => out.write_all(b"Custom")?,
+            FieldGroupClass::ReferenceDocument => out.write_all(b"ReferenceDocument")?,
         }
         Ok(IsNull::No)
     }
@@ -43,6 +45,7 @@ impl FromSql<FieldGroupClassEnum, Pg> for FieldGroupClass {
             b"EconomicResource" => Ok(FieldGroupClass::EconomicResource),
             b"Location" => Ok(FieldGroupClass::Location),
             b"Custom" => Ok(FieldGroupClass::Custom),
+            b"ReferenceDocument" => Ok(FieldGroupClass::ReferenceDocument),
             _ => Err("Unrecognized enum variant".into()),
         }
     }

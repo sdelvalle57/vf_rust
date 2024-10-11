@@ -1,26 +1,20 @@
 use crate::{
     db::schema::{
-        recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
-        recipe_flow_templates, recipe_process_flow_group_data_fields, recipe_templates,
-        recipe_templates_access,
+        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_templates, recipe_templates_access
     },
     graphql::context::Context,
     templates::{
-        recipe_flow_template::{
+        map_template::{MapTemplate, MapTemplateResponse, NewMapTemplate, TemplateType}, recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
-        },
-        recipe_flow_template_data_field::{
+        }, recipe_flow_template_data_field::{
             FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField,
             RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
-        },
-        recipe_flow_template_group_data_fields::{
+        }, recipe_flow_template_group_data_fields::{
             FieldGroupClass, NewRecipeFlowTemplateGroupDataField, RecipeFlowTemplateGroupDataField,
-        },
-        recipe_template::{
-            NewRecipeTemplate, RecipeTemplate, RecipeTemplateType, RecipeTemplateWithRecipeFlows,
-        },
-        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess},
+        }, recipe_template::{
+            NewRecipeTemplate, RecipeTemplate, RecipeTemplateWithRecipeFlows,
+        }, recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess}
     },
 };
 use diesel::prelude::*;
@@ -61,6 +55,7 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub required: bool,
     pub flow_through: Option<FlowThrough>,
     pub inherits: Option<FieldInheritance>,
+    pub accept_default: bool
 }
 
 /** Queries */
@@ -130,6 +125,83 @@ fn get_recipe_template_with_flows(
     Ok(recipe_template_with_recipe_flows)
 }
 
+pub fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateResponse>> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let map_templates: Vec<MapTemplate> =
+        map_templates::table.load::<MapTemplate>(conn)?;
+
+    let mut res: Vec<MapTemplateResponse> = Vec::new();
+
+    for map_template in map_templates {
+        let mut new_map_template = MapTemplateResponse::new(map_template);
+
+        let templates: Vec<RecipeTemplate> = recipe_templates::table
+            .filter(recipe_templates::map_template_id.eq(new_map_template.map.id))
+            .load::<RecipeTemplate>(conn)?;
+
+        for template in templates {
+            let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, template)?;
+            new_map_template.add_template(recipe_template_with_recipe_flows);
+        }
+
+        res.push(new_map_template);
+    }
+
+    Ok(res)
+}
+
+pub fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<MapTemplateResponse> {
+    let conn: &mut diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<PgConnection>> = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+        let map_template: MapTemplate =  map_templates::table
+            .filter(map_templates::id.eq(map_id))
+            .first::<MapTemplate>(conn)?;
+
+        let mut new_map_template = MapTemplateResponse::new(map_template);
+
+        let templates: Vec<RecipeTemplate> = recipe_templates::table
+            .filter(recipe_templates::map_template_id.eq(new_map_template.map.id))
+            .load::<RecipeTemplate>(conn)?;
+
+        for template in templates {
+            let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, template)?;
+            new_map_template.add_template(recipe_template_with_recipe_flows);
+        }
+
+        Ok(new_map_template)
+}
+
+
+pub fn get_templates_by_map_id(context: &Context, map_id: Uuid) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let mut res: Vec<RecipeTemplateWithRecipeFlows> = Vec::new();
+
+    //Get all recipe templates
+    let recipe_templates: Vec<RecipeTemplate> = recipe_templates::table
+        .filter(recipe_templates::map_template_id.eq(map_id))
+        .load::<RecipeTemplate>(conn)?;
+
+    for rt in recipe_templates {
+        //create instance of RecipeTemplateWithRecipeFlows
+        let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, rt)?;
+
+        res.push(recipe_template_with_recipe_flows);
+    }
+
+    Ok(res)
+}
+
 pub fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
     let conn = &mut context
         .pool
@@ -194,11 +266,38 @@ pub fn get_templates_access_by_agent(
     Ok(res)
 }
 
+pub fn create_map_template(
+    context: &Context,
+    name: String,
+    type_: TemplateType
+) -> FieldResult<MapTemplate> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    conn.transaction::<_, FieldError, _>(|conn| {
+        
+        let new_map_template = NewMapTemplate::new(
+            &name,
+            &type_
+        );
+        
+        let inserted_map_template: MapTemplate = diesel::insert_into(map_templates::table)
+            .values(&new_map_template)
+            .get_result(conn)
+            .map_err(|e| FieldError::new(e, juniper::Value::null()))?; 
+
+        Ok(inserted_map_template)
+    })
+    
+}
+
 pub fn create_recipe_template(
     context: &Context,
+    map_template_id: Uuid,
     identifier: String,
     name: String,
-    recipe_template_type: RecipeTemplateType,
     recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
     commitment: Option<ActionType>,
     fulfills: Option<String>,
@@ -226,12 +325,12 @@ pub fn create_recipe_template(
         };
 
         let new_template = NewRecipeTemplate::new(
+            &map_template_id,
             &identifier,
             &name,
             commitment.as_ref(),
             fulfills_id.as_ref(),
-            trigger.as_ref(),
-            &recipe_template_type,
+            trigger.as_ref()
         );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
@@ -330,6 +429,7 @@ pub fn create_recipe_template(
                     &rd.required,
                     rd.flow_through.as_ref(),
                     inherits.as_ref(),
+                    &rd.accept_default
                 );
 
                 let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =
@@ -456,6 +556,11 @@ mod tests {
             //Delete recipe_templates
             diesel::delete(recipe_templates::table).execute(conn)?;
             let remaining_rows: i64 = recipe_templates::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete map_templates
+            diesel::delete(map_templates::table).execute(conn)?;
+            let remaining_rows: i64 = map_templates::table.count().get_result(conn)?;
             assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
 
             Ok(())

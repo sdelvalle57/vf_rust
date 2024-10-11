@@ -4,10 +4,14 @@ use uuid::Uuid;
 use crate::{
     common::{
         agent::Agent, economic_resource::EconomicResource, location::Location, resource_specification::{ResourceSpecification, ResourceType}
-    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{recipe_flow_template::ActionType, recipe_template::{RecipeTemplateType, RecipeTemplateWithRecipeFlows}, recipe_template_access::RecipeTemplateAccess}
+    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{map_template::{MapTemplate, TemplateType}, recipe_flow_template::ActionType, recipe_template::RecipeTemplateWithRecipeFlows, recipe_template_access::RecipeTemplateAccess}
 };
 
-use super::modules::{common::{agent, economic_resource, location, resource_specification}, process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}};
+use super::modules::{
+    common::{agent, economic_resource, location, resource_specification}, 
+    // process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, 
+    recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}
+};
 
 pub struct MutationRoot;
 
@@ -62,12 +66,25 @@ impl MutationRoot {
         )
     }
 
+    /** Map Templates */
+    fn create_map_template(
+        context: &Context,
+        name: String,
+        type_: TemplateType
+    ) -> FieldResult<MapTemplate> {
+        template::create_map_template(
+            context, 
+            name, 
+            type_
+        )
+    }
+
     /** Recipe Templates */
     fn create_recipe_template(
         context: &Context,
+        map_template_id: Uuid,
         identifier: String,
         name: String,
-        recipe_template_type: RecipeTemplateType,
         recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
         commitment: Option<ActionType>,
         fulfills: Option<String>,
@@ -75,9 +92,9 @@ impl MutationRoot {
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
         template::create_recipe_template(
             context, 
+            map_template_id,
             identifier,
             name, 
-            recipe_template_type, 
             recipe_flow_template_args,
             commitment,
             fulfills,
@@ -111,18 +128,18 @@ impl MutationRoot {
     }
 
     // /** Process */
-    fn create_recipe_processes(
-        context: &Context,
-        recipe_id: Uuid,
-        data: Vec<RecipeProcessWithRelation>
-    ) -> FieldResult<CreateRecipeProcessesResponse> {
-        process::create_recipe_processes(&context, recipe_id, data)
-    }
+    // fn create_recipe_processes(
+    //     context: &Context,
+    //     recipe_id: Uuid,
+    //     data: Vec<RecipeProcessWithRelation>
+    // ) -> FieldResult<CreateRecipeProcessesResponse> {
+    //     process::create_recipe_processes(&context, recipe_id, data)
+    // }
 
-    /** Process Execution */
-    fn execute_events(context: &Context, recipe_process_id: Uuid, process_flows: Vec<ProcessExecution>) -> FieldResult<String> {
-        process::execute_events(&context, recipe_process_id, process_flows)
-    }
+    // /** Process Execution */
+    // fn execute_events(context: &Context, recipe_process_id: Uuid, process_flows: Vec<ProcessExecution>) -> FieldResult<String> {
+    //     process::execute_events(&context, recipe_process_id, process_flows)
+    // }
 }
 
 

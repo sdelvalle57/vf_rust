@@ -4,13 +4,15 @@ use crate::{
     },
     graphql::context::Context,
     recipe::recipe::RecipeWithResources,
-    templates::recipe_template::RecipeTemplateWithRecipeFlows,
+    templates::{map_template::{MapTemplate, MapTemplateResponse}, recipe_template::RecipeTemplateWithRecipeFlows},
 };
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
 
 use super::modules::{
-    common::{agent, economic_resource, location, resource_specification}, process::process::{self, RecipeProcessesResponse}, recipe::recipe, templates::template
+    common::{agent, economic_resource, location, resource_specification}, 
+    // process::process::{self, RecipeProcessesResponse}, 
+    recipe::recipe, templates::template::{self, get_map_templates}
 };
 
 pub struct QueryRoot;
@@ -67,6 +69,19 @@ impl QueryRoot {
         economic_resource::economic_resources_by_agent(&context, agent_id)
     }
 
+    /** Get Map Templates */
+    fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateResponse>> {
+        template::get_map_templates(context)
+    }
+
+    fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<MapTemplateResponse> {
+        template::get_map_template_by_id(context, map_id)
+    }
+
+    fn get_templates_by_map_id(context: &Context, map_id: Uuid) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
+        template::get_templates_by_map_id(context, map_id)
+    }
+
     /** Recipe Templates */
     fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
         template::get_templates(context)
@@ -102,10 +117,10 @@ impl QueryRoot {
     }
 
 
-    fn get_recipe_processes(
-        context: &Context,
-        recipe_id: Uuid
-    ) -> FieldResult<RecipeProcessesResponse> {
-        process::get_recipe_processes(context, recipe_id)
-    }
+    // fn get_recipe_processes(
+    //     context: &Context,
+    //     recipe_id: Uuid
+    // ) -> FieldResult<RecipeProcessesResponse> {
+    //     process::get_recipe_processes(context, recipe_id)
+    // }
 }

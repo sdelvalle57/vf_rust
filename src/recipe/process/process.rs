@@ -3,7 +3,7 @@ use juniper::GraphQLObject;
 use uuid::Uuid;
 
 use crate::{
-    db::schema::{recipe_process_relations, recipe_processes}, templates::{recipe_flow_template::{ActionType, EventType, RoleType}, recipe_template::RecipeTemplateType}
+    db::schema::{recipe_process_relations, recipe_processes}, templates::{recipe_flow_template::{ActionType, EventType, RoleType}}
 };
 
 use super::flow::RecipeProcessFlowResponse;
@@ -18,7 +18,6 @@ pub struct RecipeProcess {
     pub name: String,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
-    pub recipe_type: RecipeTemplateType,
     pub identifier: String,
     pub trigger: Option<ActionType>
 }
@@ -31,7 +30,6 @@ pub struct NewRecipeProcess<'a> {
     pub name: &'a str,
     pub commitment: Option<&'a ActionType>,
     pub fulfills: Option<&'a Uuid>,
-    pub recipe_type: &'a RecipeTemplateType,
     pub identifier: &'a str,
     pub trigger: Option<&'a ActionType>
 }
@@ -43,7 +41,6 @@ impl<'a>  NewRecipeProcess<'a> {
         name: &'a str,
         commitment: Option<&'a ActionType>,
         fulfills: Option<&'a Uuid>,
-        recipe_type: &'a RecipeTemplateType,
         identifier: &'a str,
         trigger: Option<&'a ActionType>
     ) -> Self {
@@ -53,7 +50,6 @@ impl<'a>  NewRecipeProcess<'a> {
             name,
             commitment,
             fulfills,
-            recipe_type,
             identifier,
             trigger
         }
@@ -95,7 +91,6 @@ impl<'a>  NewOutpuOf<'a> {
 pub struct RecipeProcessResponse {
     pub id: Uuid,
     pub name: String,
-    pub recipe_type: RecipeTemplateType,
     pub output_of: Vec<Uuid>,
     pub process_flows: Vec<RecipeProcessFlowResponse>,
     pub commitment: Option<ActionType>,
@@ -108,7 +103,6 @@ impl RecipeProcessResponse {
         RecipeProcessResponse {
             id: recipe_process.id,
             name: recipe_process.name,
-            recipe_type: recipe_process.recipe_type,
             commitment: recipe_process.commitment,
             fulfills: recipe_process.fulfills,
             identifier: recipe_process.identifier,

@@ -26,7 +26,9 @@ pub enum FieldClass {
     Location,
     Note,
     TrackingIdentifier,
-    Custom
+    Custom,
+    ReferenceDocumentNumber,
+    ReferenceDocumentType
 }
 
 impl ToSql<FieldClassEnum, Pg> for FieldClass {
@@ -41,6 +43,8 @@ impl ToSql<FieldClassEnum, Pg> for FieldClass {
             FieldClass::TrackingIdentifier => out.write_all(b"trackingIdentifier")?,
             FieldClass::Note => out.write_all(b"note")?,
             FieldClass::Custom => out.write_all(b"custom")?,
+            FieldClass::ReferenceDocumentNumber => out.write_all(b"referenceDocumentNumber")?,
+            FieldClass::ReferenceDocumentType => out.write_all(b"referenceDocumentType")?,
         }
         Ok(IsNull::No)
     }
@@ -58,6 +62,8 @@ impl FromSql<FieldClassEnum, Pg> for FieldClass {
             b"trackingIdentifier" => Ok(FieldClass::TrackingIdentifier),
             b"note" => Ok(FieldClass::Note),
             b"custom" => Ok(FieldClass::Custom),
+            b"referenceDocumentNumber" => Ok(FieldClass::ReferenceDocumentNumber),
+            b"referenceDocumentType" => Ok(FieldClass::ReferenceDocumentType),
             _ => Err("Unrecognized enum variant".into()),
         }
     }
@@ -142,7 +148,8 @@ pub struct RecipeFlowTemplateDataField {
     pub note: Option<String>,
     pub required: bool,
     pub flow_through: Option<FlowThrough>,
-    pub inherits: Option<Uuid>
+    pub inherits: Option<Uuid>,
+    pub accept_default: bool
 }
 
 
@@ -159,7 +166,8 @@ pub struct NewRecipeFlowTemplateDataField<'a> {
     pub note: Option<&'a str>,
     pub required: &'a bool,
     pub flow_through: Option<&'a FlowThrough>,
-    pub inherits: Option<&'a Uuid>
+    pub inherits: Option<&'a Uuid>,
+    pub accept_default: &'a bool
 }
 
 impl<'a> NewRecipeFlowTemplateDataField<'a> {
@@ -173,7 +181,8 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
         note: Option<&'a str>,
         required: &'a bool,
         flow_through: Option<&'a FlowThrough>,
-        inherits: Option<&'a Uuid>
+        inherits: Option<&'a Uuid>,
+        accept_default: &'a bool
     ) -> Self {
         NewRecipeFlowTemplateDataField {
             recipe_flow_template_id,
@@ -185,7 +194,8 @@ impl<'a> NewRecipeFlowTemplateDataField<'a> {
             note,
             required,
             flow_through,
-            inherits
+            inherits,
+            accept_default
         }
     }
 }
@@ -202,7 +212,8 @@ pub struct RecipeFlowTemplateDataFieldInput {
     pub note: Option<String>,
     pub required: bool,
     pub flow_through: Option<FlowThrough>,
-    pub inherits: Option<Uuid>
+    pub inherits: Option<Uuid>,
+    pub accept_default: bool
 }
 
 
@@ -221,7 +232,8 @@ impl TryFrom<&RecipeFlowTemplateDataField> for RecipeFlowTemplateDataFieldInput 
             note: value.note.clone(),
             required: value.required,
             flow_through: value.flow_through.clone(),
-            inherits: value.inherits
+            inherits: value.inherits,
+            accept_default: value.accept_default
         })
     }
 }
