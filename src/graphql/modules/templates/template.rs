@@ -37,6 +37,7 @@ pub struct RecipeFlowTemplateArg {
     data_fields: Vec<RecipeFlowTemplateDataFieldArg>,
     groups: Vec<RecipeFlowTemplateGroup>,
     identifier: String,
+    interactions: Option<i32>,
 }
 
 #[derive(juniper::GraphQLInputObject)]
@@ -342,8 +343,6 @@ pub fn create_recipe_template(
         let mut res: RecipeTemplateWithRecipeFlows =
             RecipeTemplateWithRecipeFlows::new(&inserted_template);
 
-        println!("inserted_template: {:?}", inserted_template);
-
         // Iterate over each `RecipeFlowTemplateArg`
         for r in recipe_flow_template_args {
             // Create and insert a new recipe flow template
@@ -353,6 +352,7 @@ pub fn create_recipe_template(
                 &r.role_type,
                 &r.action,
                 &r.identifier,
+                r.interactions.as_ref()
             );
 
             let inserted_recipe_flow_template: RecipeFlowTemplate =
@@ -365,8 +365,6 @@ pub fn create_recipe_template(
                 RecipeFlowTemplateWithDataFields::new(&inserted_recipe_flow_template);
 
             let mut groups: Vec<(Uuid, Vec<String>)> = Vec::new();
-
-            println!("inserted_recipe_flow_template: {:?}", inserted_recipe_flow_template);
 
             for group in r.groups {
                 let new_group = NewRecipeFlowTemplateGroupDataField::new(&group.name, &group.class);
@@ -384,8 +382,6 @@ pub fn create_recipe_template(
 
                 groups.push((inserted_group.id, separated_fields));
             }
-
-            println!("groups: {:?}", groups);
 
             // Iterate over each data field and add it to the recipe flow
             for rd in r.data_fields {
@@ -445,8 +441,6 @@ pub fn create_recipe_template(
 
                 // Add the data field to the recipe flow
                 recipe_flow_res.add_data_field(recipe_flow_template_data_field_input);
-
-                println!("inserted_recipe_flow_template_data_field: {:?}", inserted_recipe_flow_template_data_field);
 
                 if let Some(group_id) = group_id {
                     let group: RecipeFlowTemplateGroupDataField =
@@ -515,7 +509,7 @@ mod tests {
 
     // Initialize the pool for testing purposes
     fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
-        let database_url = "postgres://value_flows:valueflows@localhost/vf24";
+        let database_url = "postgres://value_flows:valueflows@localhost/vf25";
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         r2d2::Pool::builder()
             .build(manager)

@@ -125,8 +125,6 @@ impl FromSql<ActionTypeEnum, Pg> for ActionType {
 }
 
 
-
-
 #[derive(Queryable, GraphQLObject, Debug)]
 #[diesel(table_name = recipe_flow_templates)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -138,6 +136,7 @@ pub struct RecipeFlowTemplate {
     pub role_type: RoleType,
     pub action: ActionType,
     pub identifier: String,
+    pub interactions: Option<i32>,
 }
 
 
@@ -149,7 +148,8 @@ pub struct NewRecipeFlowTemplate<'a> {
     pub event_type: &'a EventType,
     pub role_type: &'a RoleType,
     pub action: &'a ActionType,
-    pub identifier: &'a str
+    pub identifier: &'a str,
+    pub interactions: Option<&'a i32>
 }
 
 
@@ -159,14 +159,16 @@ impl<'a> NewRecipeFlowTemplate<'a> {
         event_type: &'a EventType,
         role_type: &'a RoleType,
         action: &'a ActionType,
-        identifier: &'a str
+        identifier: &'a str,
+        interactions: Option<&'a i32>
     ) -> Self {
         NewRecipeFlowTemplate {
             recipe_template_id,
             event_type,
             role_type,
             action,
-            identifier
+            identifier,
+            interactions
         }
     }
 }
@@ -180,6 +182,7 @@ pub struct RecipeFlowTemplateWithDataFields {
     pub role_type: RoleType,
     pub action: ActionType,
     pub identifier: String,
+    pub interactions: Option<i32>,
     pub groups: Vec<RecipeFlowTemplateGroupDataField>,
     pub data_fields: Vec<RecipeFlowTemplateDataFieldInput>
 }
@@ -193,6 +196,7 @@ impl RecipeFlowTemplateWithDataFields {
             role_type: recipe_flow_template.role_type,
             action: recipe_flow_template.action,
             identifier: recipe_flow_template.identifier.clone(),
+            interactions: recipe_flow_template.interactions,
             groups: Vec::new(),
             data_fields: Vec::new()
         }

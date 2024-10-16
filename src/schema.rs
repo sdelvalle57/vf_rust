@@ -194,6 +194,7 @@ diesel::table! {
         role_type -> RoleTypeEnum,
         action -> ActionTypeEnum,
         identifier -> Text,
+        interactions -> Nullable<Int4>,
     }
 }
 
