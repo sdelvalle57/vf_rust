@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::db::schema::{map_templates, sql_types::TemplateTypeEnum};
 
-use super::recipe_template::RecipeTemplateWithRecipeFlows;
+use super::{recipe_template::RecipeTemplateWithRecipeFlows, recipe_template_blacklist::RecipeTemplateBlacklist};
 
 #[derive(Debug, PartialEq, FromSqlRow, AsExpression, Eq, GraphQLEnum, Clone)]
 #[diesel(sql_type = TemplateTypeEnum)]
@@ -74,14 +74,16 @@ impl<'a> NewMapTemplate<'a> {
 #[derive(GraphQLObject)]
 pub struct MapTemplateResponse {
     pub map: MapTemplate,
-    pub templates: Vec<RecipeTemplateWithRecipeFlows>
+    pub templates: Vec<RecipeTemplateWithRecipeFlows>,
+    pub blacklists: Vec<RecipeTemplateBlacklist>
 }
 
 impl MapTemplateResponse {
-    pub fn new(map: MapTemplate) -> Self {
+    pub fn new(map: MapTemplate, blacklists: Vec<RecipeTemplateBlacklist>) -> Self {
         MapTemplateResponse {
             map,
-            templates: Vec::new()
+            templates: Vec::new(),
+            blacklists
         }
     }
 

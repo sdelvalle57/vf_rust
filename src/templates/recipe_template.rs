@@ -67,8 +67,7 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub fulfills: Option<Uuid>,
     pub identifier: String,
     pub trigger: Option<ActionType>,
-    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>,
-    pub blacklists: Vec<RecipeTemplateBlacklist>
+    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
 }
 
 impl RecipeTemplateWithRecipeFlows {
@@ -81,13 +80,11 @@ impl RecipeTemplateWithRecipeFlows {
             fulfills: recipe_template.fulfills,
             identifier: recipe_template.identifier.clone(),
             trigger: recipe_template.trigger,
-            recipe_flows: Vec::new(),
-            blacklists: Vec::new()
+            recipe_flows: Vec::new()
         }
     }
 
     pub fn add_recipe_flow(&mut self, recipe_flow: RecipeFlowTemplateWithDataFields) {
         self.recipe_flows.push(recipe_flow)
     }
-
 }

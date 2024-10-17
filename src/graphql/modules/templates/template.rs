@@ -140,7 +140,12 @@ pub fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateRespon
     let mut res: Vec<MapTemplateResponse> = Vec::new();
 
     for map_template in map_templates {
-        let mut new_map_template = MapTemplateResponse::new(map_template);
+
+        let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
+            .filter(recipe_template_blacklists::map_template_id.eq(map_template.id))
+            .load::<RecipeTemplateBlacklist>(conn)?;
+
+        let mut new_map_template = MapTemplateResponse::new(map_template, blacklists);
 
         let templates: Vec<RecipeTemplate> = recipe_templates::table
             .filter(recipe_templates::map_template_id.eq(new_map_template.map.id))
@@ -169,7 +174,11 @@ pub fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<Ma
         .filter(map_templates::id.eq(map_id))
         .first::<MapTemplate>(conn)?;
 
-    let mut new_map_template = MapTemplateResponse::new(map_template);
+    let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
+        .filter(recipe_template_blacklists::map_template_id.eq(map_id))
+        .load::<RecipeTemplateBlacklist>(conn)?;
+
+    let mut new_map_template = MapTemplateResponse::new(map_template, blacklists);
 
     let templates: Vec<RecipeTemplate> = recipe_templates::table
         .filter(recipe_templates::map_template_id.eq(new_map_template.map.id))
@@ -266,17 +275,14 @@ pub fn get_templates_access_by_agent(
 
     for a in accesses {
         let template_id = a.recipe_template_id;
-        let recipe = get_template_by_id(context, template_id)?;
-
-        let template_blacklists = get_blacklists_by_template_id(context, template_id)?;
-
+        let mut recipe = get_template_by_id(context, template_id)?;
         res.push(recipe)
     }
 
     Ok(res)
 }
 
-fn get_blacklists_by_template_id(context: &Context, template_id: Uuid) -> FieldResult<Vec<RecipeTemplateBlacklist>> {
+fn get_blacklists_by_template_id(context: &Context, map_template_id: Uuid) -> FieldResult<Vec<RecipeTemplateBlacklist>> {
     
     let conn = &mut context
         .pool
@@ -284,8 +290,7 @@ fn get_blacklists_by_template_id(context: &Context, template_id: Uuid) -> FieldR
         .expect("Failed to get DB connection from pool");
 
     let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
-        .filter(recipe_template_blacklists::recipe_template_id.eq(template_id))
-        .or_filter(recipe_template_blacklists::recipe_template_predecesor_id.eq(template_id))
+        .filter(recipe_template_blacklists::map_template_id.eq(map_template_id))
         .load::<RecipeTemplateBlacklist>(conn)?;
 
     Ok(blacklists)
