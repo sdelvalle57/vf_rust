@@ -76,8 +76,8 @@ CREATE TABLE IF NOT EXISTS recipe_templates (
 );
 
 -- ProcessWhitelistRules, 
-CREATE TABLE recipe_template_blacklists (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS recipe_template_blacklists (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     map_template_id UUID NOT NULL REFERENCES map_templates(id),
     recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
     recipe_template_predecesor_id UUID NOT NULL REFERENCES recipe_templates(id),
@@ -246,5 +246,3 @@ CREATE TABLE IF NOT EXISTS process_execution_custom_values (
     corrects UUID REFERENCES process_execution_custom_values(id),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-

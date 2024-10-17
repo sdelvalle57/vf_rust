@@ -286,7 +286,7 @@ diesel::table! {
     use diesel::sql_types::*;
 
     recipe_template_blacklists (id) {
-        id -> Int4,
+        id -> Uuid,
         map_template_id -> Uuid,
         recipe_template_id -> Uuid,
         recipe_template_predecesor_id -> Uuid,

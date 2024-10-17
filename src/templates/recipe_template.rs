@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::db::schema::recipe_templates;
 
 
-use super::recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields};
+use super::{recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields}, recipe_template_blacklist::RecipeTemplateBlacklist};
 
 
 #[derive(Queryable, GraphQLObject, Debug)]
@@ -58,8 +58,6 @@ impl<'a> NewRecipeTemplate<'a> {
     }
 }
 
-
-
 #[derive(juniper::GraphQLObject, Debug)]
 pub struct RecipeTemplateWithRecipeFlows {
     pub id: Uuid,
@@ -69,7 +67,8 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub fulfills: Option<Uuid>,
     pub identifier: String,
     pub trigger: Option<ActionType>,
-    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
+    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>,
+    pub blacklists: Vec<RecipeTemplateBlacklist>
 }
 
 impl RecipeTemplateWithRecipeFlows {
@@ -82,7 +81,8 @@ impl RecipeTemplateWithRecipeFlows {
             fulfills: recipe_template.fulfills,
             identifier: recipe_template.identifier.clone(),
             trigger: recipe_template.trigger,
-            recipe_flows: Vec::new()
+            recipe_flows: Vec::new(),
+            blacklists: Vec::new()
         }
     }
 

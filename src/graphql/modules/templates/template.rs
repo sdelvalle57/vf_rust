@@ -1,20 +1,23 @@
 use crate::{
     db::schema::{
-        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_templates, recipe_templates_access
+        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_template_blacklists, recipe_templates, recipe_templates_access
     },
     graphql::context::Context,
     templates::{
-        map_template::{MapTemplate, MapTemplateResponse, NewMapTemplate, TemplateType}, recipe_flow_template::{
+        map_template::{MapTemplate, MapTemplateResponse, NewMapTemplate, TemplateType},
+        recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
             RecipeFlowTemplateWithDataFields, RoleType,
-        }, recipe_flow_template_data_field::{
+        },
+        recipe_flow_template_data_field::{
             FieldClass, FieldType, FlowThrough, NewRecipeFlowTemplateDataField,
             RecipeFlowTemplateDataField, RecipeFlowTemplateDataFieldInput,
-        }, recipe_flow_template_group_data_fields::{
+        },
+        recipe_flow_template_group_data_fields::{
             FieldGroupClass, NewRecipeFlowTemplateGroupDataField, RecipeFlowTemplateGroupDataField,
-        }, recipe_template::{
-            NewRecipeTemplate, RecipeTemplate, RecipeTemplateWithRecipeFlows,
-        }, recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess}
+        },
+        recipe_template::{NewRecipeTemplate, RecipeTemplate, RecipeTemplateWithRecipeFlows},
+        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess}, recipe_template_blacklist::RecipeTemplateBlacklist,
     },
 };
 use diesel::prelude::*;
@@ -56,7 +59,7 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub required: bool,
     pub flow_through: Option<FlowThrough>,
     pub inherits: Option<FieldInheritance>,
-    pub accept_default: bool
+    pub accept_default: bool,
 }
 
 /** Queries */
@@ -132,8 +135,7 @@ pub fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateRespon
         .get()
         .expect("Failed to get DB connection from pool");
 
-    let map_templates: Vec<MapTemplate> =
-        map_templates::table.load::<MapTemplate>(conn)?;
+    let map_templates: Vec<MapTemplate> = map_templates::table.load::<MapTemplate>(conn)?;
 
     let mut res: Vec<MapTemplateResponse> = Vec::new();
 
@@ -145,7 +147,8 @@ pub fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateRespon
             .load::<RecipeTemplate>(conn)?;
 
         for template in templates {
-            let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, template)?;
+            let recipe_template_with_recipe_flows =
+                get_recipe_template_with_flows(&context, template)?;
             new_map_template.add_template(recipe_template_with_recipe_flows);
         }
 
@@ -156,31 +159,34 @@ pub fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateRespon
 }
 
 pub fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<MapTemplateResponse> {
-    let conn: &mut diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<PgConnection>> = &mut context
-        .pool
-        .get()
-        .expect("Failed to get DB connection from pool");
+    let conn: &mut diesel::r2d2::PooledConnection<diesel::r2d2::ConnectionManager<PgConnection>> =
+        &mut context
+            .pool
+            .get()
+            .expect("Failed to get DB connection from pool");
 
-        let map_template: MapTemplate =  map_templates::table
-            .filter(map_templates::id.eq(map_id))
-            .first::<MapTemplate>(conn)?;
+    let map_template: MapTemplate = map_templates::table
+        .filter(map_templates::id.eq(map_id))
+        .first::<MapTemplate>(conn)?;
 
-        let mut new_map_template = MapTemplateResponse::new(map_template);
+    let mut new_map_template = MapTemplateResponse::new(map_template);
 
-        let templates: Vec<RecipeTemplate> = recipe_templates::table
-            .filter(recipe_templates::map_template_id.eq(new_map_template.map.id))
-            .load::<RecipeTemplate>(conn)?;
+    let templates: Vec<RecipeTemplate> = recipe_templates::table
+        .filter(recipe_templates::map_template_id.eq(new_map_template.map.id))
+        .load::<RecipeTemplate>(conn)?;
 
-        for template in templates {
-            let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, template)?;
-            new_map_template.add_template(recipe_template_with_recipe_flows);
-        }
+    for template in templates {
+        let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, template)?;
+        new_map_template.add_template(recipe_template_with_recipe_flows);
+    }
 
-        Ok(new_map_template)
+    Ok(new_map_template)
 }
 
-
-pub fn get_templates_by_map_id(context: &Context, map_id: Uuid) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
+pub fn get_templates_by_map_id(
+    context: &Context,
+    map_id: Uuid,
+) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
     let conn = &mut context
         .pool
         .get()
@@ -261,16 +267,34 @@ pub fn get_templates_access_by_agent(
     for a in accesses {
         let template_id = a.recipe_template_id;
         let recipe = get_template_by_id(context, template_id)?;
+
+        let template_blacklists = get_blacklists_by_template_id(context, template_id)?;
+
         res.push(recipe)
     }
 
     Ok(res)
 }
 
+fn get_blacklists_by_template_id(context: &Context, template_id: Uuid) -> FieldResult<Vec<RecipeTemplateBlacklist>> {
+    
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
+        .filter(recipe_template_blacklists::recipe_template_id.eq(template_id))
+        .or_filter(recipe_template_blacklists::recipe_template_predecesor_id.eq(template_id))
+        .load::<RecipeTemplateBlacklist>(conn)?;
+
+    Ok(blacklists)
+}
+
 pub fn create_map_template(
     context: &Context,
     name: String,
-    type_: TemplateType
+    type_: TemplateType,
 ) -> FieldResult<MapTemplate> {
     let conn = &mut context
         .pool
@@ -278,20 +302,15 @@ pub fn create_map_template(
         .expect("Failed to get DB connection from pool");
 
     conn.transaction::<_, FieldError, _>(|conn| {
-        
-        let new_map_template = NewMapTemplate::new(
-            &name,
-            &type_
-        );
-        
+        let new_map_template = NewMapTemplate::new(&name, &type_);
+
         let inserted_map_template: MapTemplate = diesel::insert_into(map_templates::table)
             .values(&new_map_template)
             .get_result(conn)
-            .map_err(|e| FieldError::new(e, juniper::Value::null()))?; 
+            .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
 
         Ok(inserted_map_template)
     })
-    
 }
 
 pub fn create_recipe_template(
@@ -331,7 +350,7 @@ pub fn create_recipe_template(
             &name,
             commitment.as_ref(),
             fulfills_id.as_ref(),
-            trigger.as_ref()
+            trigger.as_ref(),
         );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
@@ -352,7 +371,7 @@ pub fn create_recipe_template(
                 &r.role_type,
                 &r.action,
                 &r.identifier,
-                r.interactions.as_ref()
+                r.interactions.as_ref(),
             );
 
             let inserted_recipe_flow_template: RecipeFlowTemplate =
@@ -425,7 +444,7 @@ pub fn create_recipe_template(
                     &rd.required,
                     rd.flow_through.as_ref(),
                     inherits.as_ref(),
-                    &rd.accept_default
+                    &rd.accept_default,
                 );
 
                 let inserted_recipe_flow_template_data_field: RecipeFlowTemplateDataField =

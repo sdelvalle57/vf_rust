@@ -4,7 +4,7 @@ use crate::{
     },
     graphql::context::Context,
     recipe::recipe::RecipeWithResources,
-    templates::{map_template::{MapTemplate, MapTemplateResponse}, recipe_template::RecipeTemplateWithRecipeFlows},
+    templates::{map_template::MapTemplateResponse, recipe_template::RecipeTemplateWithRecipeFlows},
 };
 use juniper::{graphql_object, FieldResult};
 use uuid::Uuid;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::modules::{
     common::{agent, economic_resource, location, resource_specification}, 
     // process::process::{self, RecipeProcessesResponse}, 
-    recipe::recipe, templates::template::{self, get_map_templates}
+    recipe::recipe, templates::template
 };
 
 pub struct QueryRoot;
