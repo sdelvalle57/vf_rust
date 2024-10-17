@@ -21,7 +21,6 @@ CREATE TYPE field_class_enum AS ENUM (
 CREATE TYPE field_group_class_enum AS ENUM ('ResourceSpecification', 'EconomicResource', 'Location', 'Custom', 'ReferenceDocument');
 CREATE TYPE field_type_enum AS ENUM ('Text', 'Date', 'Number', 'Select');
 CREATE TYPE flow_through_enum AS ENUM ('Internal', 'External');
-CREATE TYPE restriction_enum AS ENUM ('NoPredecessor', 'NoSuccessor', 'NoSuccessorOrPredecessor');
 
 -- Company Table
 CREATE TABLE IF NOT EXISTS agents (
@@ -76,14 +75,13 @@ CREATE TABLE IF NOT EXISTS recipe_templates (
     trigger action_type_enum
 );
 
--- ProcessWhitelistRules
+-- ProcessWhitelistRules, 
 CREATE TABLE recipe_template_blacklists (
     id SERIAL PRIMARY KEY,
     map_template_id UUID NOT NULL REFERENCES map_templates(id),
     recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
-    restricted_recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
-    restriction_type restriction_enum NOT NULL,
-    CONSTRAINT unique_process_restriction UNIQUE (recipe_template_id, restricted_recipe_template_id)
+    recipe_template_predecesor_id UUID NOT NULL REFERENCES recipe_templates(id),
+    CONSTRAINT unique_process_restriction UNIQUE (recipe_template_id, recipe_template_predecesor_id)
 );
 
 -- ProcessTemplateAccess
@@ -100,7 +98,8 @@ CREATE TABLE IF NOT EXISTS recipe_flow_templates (
     event_type event_type_enum NOT NULL,
     role_type role_type_enum NOT NULL,
     action action_type_enum NOT NULL,
-    identifier TEXT NOT NULL
+    identifier TEXT NOT NULL,
+    interactions INTEGER
 );
 
 -- ProcessFlowTemplateGroupDataFields

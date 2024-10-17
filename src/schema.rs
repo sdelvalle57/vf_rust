@@ -30,10 +30,6 @@ pub mod sql_types {
     pub struct ResourceTypeEnum;
 
     #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-    #[diesel(postgres_type(name = "restriction_enum"))]
-    pub struct RestrictionEnum;
-
-    #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
     #[diesel(postgres_type(name = "role_type_enum"))]
     pub struct RoleTypeEnum;
 
@@ -288,14 +284,12 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
-    use super::sql_types::RestrictionEnum;
 
     recipe_template_blacklists (id) {
         id -> Int4,
         map_template_id -> Uuid,
         recipe_template_id -> Uuid,
-        restricted_recipe_template_id -> Uuid,
-        restriction_type -> RestrictionEnum,
+        recipe_template_predecesor_id -> Uuid,
     }
 }
 

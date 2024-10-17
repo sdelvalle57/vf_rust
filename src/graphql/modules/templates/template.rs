@@ -509,7 +509,7 @@ mod tests {
 
     // Initialize the pool for testing purposes
     fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
-        let database_url = "postgres://value_flows:valueflows@localhost/vf25";
+        let database_url = "postgres://value_flows:valueflows@localhost/vf26";
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         r2d2::Pool::builder()
             .build(manager)
