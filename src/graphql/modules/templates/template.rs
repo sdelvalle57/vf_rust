@@ -1,6 +1,8 @@
 use crate::{
     db::schema::{
-        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_template_blacklists, recipe_templates, recipe_templates_access
+        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
+        recipe_flow_templates, recipe_template_blacklists, recipe_templates,
+        recipe_templates_access,
     },
     graphql::context::Context,
     templates::{
@@ -17,7 +19,8 @@ use crate::{
             FieldGroupClass, NewRecipeFlowTemplateGroupDataField, RecipeFlowTemplateGroupDataField,
         },
         recipe_template::{NewRecipeTemplate, RecipeTemplate, RecipeTemplateWithRecipeFlows},
-        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess}, recipe_template_blacklist::RecipeTemplateBlacklist,
+        recipe_template_access::{NewRecipeTemplateAccess, RecipeTemplateAccess},
+        recipe_template_blacklist::{NewRecipeTemplateBlacklist, RecipeTemplateBlacklist},
     },
 };
 use diesel::prelude::*;
@@ -60,6 +63,12 @@ pub struct RecipeFlowTemplateDataFieldArg {
     pub flow_through: Option<FlowThrough>,
     pub inherits: Option<FieldInheritance>,
     pub accept_default: bool,
+}
+
+#[derive(juniper::GraphQLInputObject, Debug)]
+pub struct MapTemplateBlacklist {
+    pub recipe_template_id: Uuid,
+    pub recipe_template_predecesor_id: Uuid,
 }
 
 /** Queries */
@@ -140,10 +149,8 @@ pub fn get_map_templates(context: &Context) -> FieldResult<Vec<MapTemplateRespon
     let mut res: Vec<MapTemplateResponse> = Vec::new();
 
     for map_template in map_templates {
-
-        let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
-            .filter(recipe_template_blacklists::map_template_id.eq(map_template.id))
-            .load::<RecipeTemplateBlacklist>(conn)?;
+        let blacklists: Vec<RecipeTemplateBlacklist> =
+            get_blacklists_by_map_template(&context, map_template.id)?;
 
         let mut new_map_template = MapTemplateResponse::new(map_template, blacklists);
 
@@ -174,9 +181,8 @@ pub fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<Ma
         .filter(map_templates::id.eq(map_id))
         .first::<MapTemplate>(conn)?;
 
-    let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
-        .filter(recipe_template_blacklists::map_template_id.eq(map_id))
-        .load::<RecipeTemplateBlacklist>(conn)?;
+    let blacklists: Vec<RecipeTemplateBlacklist> =
+        get_blacklists_by_map_template(&context, map_template.id)?;
 
     let mut new_map_template = MapTemplateResponse::new(map_template, blacklists);
 
@@ -190,54 +196,6 @@ pub fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<Ma
     }
 
     Ok(new_map_template)
-}
-
-pub fn get_templates_by_map_id(
-    context: &Context,
-    map_id: Uuid,
-) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
-    let conn = &mut context
-        .pool
-        .get()
-        .expect("Failed to get DB connection from pool");
-
-    let mut res: Vec<RecipeTemplateWithRecipeFlows> = Vec::new();
-
-    //Get all recipe templates
-    let recipe_templates: Vec<RecipeTemplate> = recipe_templates::table
-        .filter(recipe_templates::map_template_id.eq(map_id))
-        .load::<RecipeTemplate>(conn)?;
-
-    for rt in recipe_templates {
-        //create instance of RecipeTemplateWithRecipeFlows
-        let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, rt)?;
-
-        res.push(recipe_template_with_recipe_flows);
-    }
-
-    Ok(res)
-}
-
-pub fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
-    let conn = &mut context
-        .pool
-        .get()
-        .expect("Failed to get DB connection from pool");
-
-    let mut res: Vec<RecipeTemplateWithRecipeFlows> = Vec::new();
-
-    //Get all recipe templates
-    let recipe_templates: Vec<RecipeTemplate> =
-        recipe_templates::table.load::<RecipeTemplate>(conn)?;
-
-    for rt in recipe_templates {
-        //create instance of RecipeTemplateWithRecipeFlows
-        let recipe_template_with_recipe_flows = get_recipe_template_with_flows(&context, rt)?;
-
-        res.push(recipe_template_with_recipe_flows);
-    }
-
-    Ok(res)
 }
 
 pub fn get_template_by_id(
@@ -282,8 +240,10 @@ pub fn get_templates_access_by_agent(
     Ok(res)
 }
 
-fn get_blacklists_by_template_id(context: &Context, map_template_id: Uuid) -> FieldResult<Vec<RecipeTemplateBlacklist>> {
-    
+fn get_blacklists_by_map_template(
+    context: &Context,
+    map_template_id: Uuid,
+) -> FieldResult<Vec<RecipeTemplateBlacklist>> {
     let conn = &mut context
         .pool
         .get()
@@ -479,6 +439,48 @@ pub fn create_recipe_template(
         }
 
         Ok(res)
+    })
+}
+
+pub fn set_map_template_blacklists(
+    context: &Context,
+    map_template_id: Uuid,
+    selected_template_id: Uuid,
+    blacklists: Vec<MapTemplateBlacklist>,
+) -> FieldResult<MapTemplateResponse> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    conn.transaction::<_, FieldError, _>(|conn| {
+
+        //remove all related to selected_template_id
+        diesel::delete(recipe_template_blacklists::table)
+        .filter(
+            recipe_template_blacklists::map_template_id.eq(map_template_id)
+                .and(
+                    recipe_template_blacklists::recipe_template_id.eq(selected_template_id)
+                        .or(recipe_template_blacklists::recipe_template_predecesor_id.eq(selected_template_id)),
+                ),
+        )
+        .execute(conn)?;
+
+        for blacklist in blacklists {
+            let template_id = blacklist.recipe_template_id;
+            let predecessor_id = blacklist.recipe_template_predecesor_id;
+
+            let new_blacklist = NewRecipeTemplateBlacklist::new(
+                &map_template_id,
+                &template_id,
+                &predecessor_id,
+            );
+            diesel::insert_into(recipe_template_blacklists::table)
+                .values(&new_blacklist)
+                .execute(conn)?;
+        }
+        let map_template = get_map_template_by_id(context, map_template_id)?;
+        Ok(map_template)
     })
 }
 

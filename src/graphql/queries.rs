@@ -78,14 +78,7 @@ impl QueryRoot {
         template::get_map_template_by_id(context, map_id)
     }
 
-    fn get_templates_by_map_id(context: &Context, map_id: Uuid) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
-        template::get_templates_by_map_id(context, map_id)
-    }
-
     /** Recipe Templates */
-    fn get_templates(context: &Context) -> FieldResult<Vec<RecipeTemplateWithRecipeFlows>> {
-        template::get_templates(context)
-    }
 
     fn get_template_by_id(context: &Context, template_id: Uuid) -> FieldResult<RecipeTemplateWithRecipeFlows> {
         template::get_template_by_id(context, template_id)

@@ -4,13 +4,13 @@ use uuid::Uuid;
 use crate::{
     common::{
         agent::Agent, economic_resource::EconomicResource, location::Location, resource_specification::{ResourceSpecification, ResourceType}
-    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{map_template::{MapTemplate, TemplateType}, recipe_flow_template::ActionType, recipe_template::RecipeTemplateWithRecipeFlows, recipe_template_access::RecipeTemplateAccess}
+    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{map_template::{MapTemplate, MapTemplateResponse, TemplateType}, recipe_flow_template::ActionType, recipe_template::RecipeTemplateWithRecipeFlows, recipe_template_access::RecipeTemplateAccess}
 };
 
 use super::modules::{
     common::{agent, economic_resource, location, resource_specification}, 
     // process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, 
-    recipe::recipe, templates::template::{self, RecipeFlowTemplateArg}
+    recipe::recipe, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
 };
 
 pub struct MutationRoot;
@@ -100,6 +100,15 @@ impl MutationRoot {
             fulfills,
             trigger
         )
+    }
+
+    fn set_map_template_blacklists(
+        context: &Context,
+        map_template_id: Uuid,
+        selected_template_id: Uuid,
+        blacklists: Vec<MapTemplateBlacklist>,
+    ) -> FieldResult<MapTemplateResponse> {
+        template::set_map_template_blacklists(context, map_template_id, selected_template_id, blacklists)
     }
 
     /** Recipe Template Access */

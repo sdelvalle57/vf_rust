@@ -71,7 +71,7 @@ impl<'a> NewMapTemplate<'a> {
     }
 }
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug)]
 pub struct MapTemplateResponse {
     pub map: MapTemplate,
     pub templates: Vec<RecipeTemplateWithRecipeFlows>,

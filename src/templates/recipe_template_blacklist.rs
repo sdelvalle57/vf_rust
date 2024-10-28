@@ -20,7 +20,7 @@ pub struct RecipeTemplateBlacklist {
     pub recipe_template_predecesor_id: Uuid
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[diesel(table_name = recipe_template_blacklists)]
 pub struct NewRecipeTemplateBlacklist<'a> {
     pub map_template_id: &'a Uuid,
