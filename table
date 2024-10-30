@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS recipe_templates (
     fulfills UUID REFERENCES recipe_templates(id),
     trigger action_type_enum,
     version INTEGER NOT NULL DEFAULT 1,
-    overrides UUID REFERENCES recipe_templates(id),
+    overriden_by UUID REFERENCES recipe_templates(id),
     created_by UUID REFERENCES agents(id)
 );
 

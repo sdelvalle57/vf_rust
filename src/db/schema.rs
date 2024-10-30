@@ -105,47 +105,6 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
-
-    process_execution_custom_values (id) {
-        id -> Uuid,
-        process_execution_id -> Uuid,
-        field_id -> Uuid,
-        field_value -> Text,
-        corrects -> Nullable<Uuid>,
-        created_at -> Timestamp,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::ActionTypeEnum;
-    use super::sql_types::RoleTypeEnum;
-
-    process_executions (id) {
-        id -> Uuid,
-        process_flow_id -> Uuid,
-        action -> ActionTypeEnum,
-        role_type -> RoleTypeEnum,
-        resource_specification -> Nullable<Uuid>,
-        resource_reference_number -> Nullable<Int4>,
-        resource_lot_number -> Nullable<Int4>,
-        resource_quantity -> Nullable<Int4>,
-        to_resource_specification -> Nullable<Uuid>,
-        to_resource_reference_number -> Nullable<Int4>,
-        to_resource_lot_number -> Nullable<Int4>,
-        provider_agent -> Uuid,
-        receiver_agent -> Uuid,
-        at_location -> Nullable<Uuid>,
-        to_location -> Nullable<Uuid>,
-        has_point_in_time -> Nullable<Timestamp>,
-        created_at -> Timestamp,
-        corrects -> Nullable<Uuid>,
-        note -> Nullable<Text>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
     use super::sql_types::FieldClassEnum;
     use super::sql_types::FieldTypeEnum;
     use super::sql_types::FlowThroughEnum;
@@ -191,57 +150,6 @@ diesel::table! {
         action -> ActionTypeEnum,
         identifier -> Text,
         interactions -> Nullable<Int4>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::FieldClassEnum;
-    use super::sql_types::FieldTypeEnum;
-    use super::sql_types::FlowThroughEnum;
-
-    recipe_process_flow_data_fields (id) {
-        id -> Uuid,
-        recipe_process_flow_id -> Uuid,
-        recipe_flow_template_data_field_id -> Nullable<Uuid>,
-        group_id -> Nullable<Uuid>,
-        field_identifier -> Text,
-        field_class -> FieldClassEnum,
-        field -> Text,
-        field_type -> FieldTypeEnum,
-        note -> Nullable<Text>,
-        required -> Bool,
-        default_value -> Nullable<Text>,
-        flow_through -> Nullable<FlowThroughEnum>,
-        inherits -> Nullable<Uuid>,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::FieldGroupClassEnum;
-
-    recipe_process_flow_group_data_fields (id) {
-        id -> Uuid,
-        name -> Text,
-        group_class -> FieldGroupClassEnum,
-    }
-}
-
-diesel::table! {
-    use diesel::sql_types::*;
-    use super::sql_types::EventTypeEnum;
-    use super::sql_types::RoleTypeEnum;
-    use super::sql_types::ActionTypeEnum;
-
-    recipe_process_flows (id) {
-        id -> Uuid,
-        recipe_process_id -> Uuid,
-        recipe_flow_template_id -> Uuid,
-        event_type -> EventTypeEnum,
-        role_type -> RoleTypeEnum,
-        action -> ActionTypeEnum,
-        identifier -> Text,
     }
 }
 
@@ -346,17 +254,9 @@ diesel::table! {
 diesel::joinable!(counters -> agents (agent_id));
 diesel::joinable!(economic_resources -> resource_specifications (resource_specification_id));
 diesel::joinable!(locations -> agents (agent_id));
-diesel::joinable!(process_execution_custom_values -> process_executions (process_execution_id));
-diesel::joinable!(process_execution_custom_values -> recipe_process_flow_data_fields (field_id));
-diesel::joinable!(process_executions -> recipe_process_flows (process_flow_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_template_group_data_fields (group_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
-diesel::joinable!(recipe_process_flow_data_fields -> recipe_flow_template_data_fields (recipe_flow_template_data_field_id));
-diesel::joinable!(recipe_process_flow_data_fields -> recipe_process_flow_group_data_fields (group_id));
-diesel::joinable!(recipe_process_flow_data_fields -> recipe_process_flows (recipe_process_flow_id));
-diesel::joinable!(recipe_process_flows -> recipe_flow_templates (recipe_flow_template_id));
-diesel::joinable!(recipe_process_flows -> recipe_processes (recipe_process_id));
 diesel::joinable!(recipe_processes -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_processes -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));
@@ -375,14 +275,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     economic_resources,
     locations,
     map_templates,
-    process_execution_custom_values,
-    process_executions,
     recipe_flow_template_data_fields,
     recipe_flow_template_group_data_fields,
     recipe_flow_templates,
-    recipe_process_flow_data_fields,
-    recipe_process_flow_group_data_fields,
-    recipe_process_flows,
     recipe_process_relations,
     recipe_processes,
     recipe_resources,

@@ -10,7 +10,7 @@ use crate::{
 use super::modules::{
     common::{agent, economic_resource, location, resource_specification}, 
     // process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, 
-    recipe::recipe, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
+    recipe::recipe::{self, RecipeProcessRelations}, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
 };
 
 pub struct MutationRoot;
@@ -79,6 +79,12 @@ impl MutationRoot {
         )
     }
 
+
+    /*
+    version INTEGER NOT NULL DEFAULT 1,
+    overrides UUID REFERENCES recipe_templates(id),
+    created_by UUID REFERENCES agents(id)
+     */
     /** Recipe Templates */
     fn create_recipe_template(
         context: &Context,
@@ -88,7 +94,11 @@ impl MutationRoot {
         recipe_flow_template_args: Vec<RecipeFlowTemplateArg>,
         commitment: Option<ActionType>,
         fulfills: Option<String>,
-        trigger: Option<ActionType>
+        trigger: Option<ActionType>,
+        version: i32,
+        overrides: Option<Uuid>,
+        created_by: Option<Uuid>
+
     ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
         template::create_recipe_template(
             context, 
@@ -98,7 +108,10 @@ impl MutationRoot {
             recipe_flow_template_args,
             commitment,
             fulfills,
-            trigger
+            trigger,
+            version,
+            overrides,
+            created_by
         )
     }
 
@@ -136,19 +149,15 @@ impl MutationRoot {
         location::create_location(&context, agent_id, name, value)
     }
 
-    // /** Process */
-    // fn create_recipe_processes(
-    //     context: &Context,
-    //     recipe_id: Uuid,
-    //     data: Vec<RecipeProcessWithRelation>
-    // ) -> FieldResult<CreateRecipeProcessesResponse> {
-    //     process::create_recipe_processes(&context, recipe_id, data)
-    // }
-
-    // /** Process Execution */
-    // fn execute_events(context: &Context, recipe_process_id: Uuid, process_flows: Vec<ProcessExecution>) -> FieldResult<String> {
-    //     process::execute_events(&context, recipe_process_id, process_flows)
-    // }
+    fn set_recipe_processes(
+        context: &Context,
+        recipe_id: Uuid,
+        recipe_template_ids: Vec<Uuid>,
+        name: String,
+        relations: Vec<RecipeProcessRelations>
+    ) -> FieldResult<()> {
+        recipe::set_recipe_processes(&context, recipe_id, recipe_template_ids, name, relations)
+    } 
 }
 
 

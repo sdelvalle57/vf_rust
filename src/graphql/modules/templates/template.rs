@@ -6,6 +6,7 @@ use crate::{
     },
     graphql::context::Context,
     templates::{
+        self,
         map_template::{MapTemplate, MapTemplateResponse, NewMapTemplate, TemplateType},
         recipe_flow_template::{
             ActionType, EventType, NewRecipeFlowTemplate, RecipeFlowTemplate,
@@ -69,6 +70,12 @@ pub struct RecipeFlowTemplateDataFieldArg {
 pub struct MapTemplateBlacklist {
     pub recipe_template_id: Uuid,
     pub recipe_template_predecesor_id: Uuid,
+}
+
+#[derive(juniper::GraphQLObject)]
+pub struct BlacklistResponse {
+    pub successors: Vec<Uuid>,
+    pub predecessors: Vec<Uuid>,
 }
 
 /** Queries */
@@ -256,6 +263,86 @@ fn get_blacklists_by_map_template(
     Ok(blacklists)
 }
 
+fn get_recursive_templates(context: &Context, template_id: Uuid) -> FieldResult<Vec<Uuid>> {
+    let mut res: Vec<Uuid> = Vec::new();
+    let mut current_template_id = Some(template_id);
+
+    // Traverse templates recursively
+    while let Some(template_id) = current_template_id {
+        // Get the current template by ID
+        let template = get_template_by_id(context, template_id)?;
+
+        // Add the current template ID to the result vector
+        res.push(template_id);
+
+        // Update current_template_id with `overriden_by` if it exists, otherwise end loop
+        current_template_id = template.overriden_by;
+    }
+
+    Ok(res)
+}
+
+fn get_template_first_version(context: &Context, template_id: Uuid) -> FieldResult<Uuid> {
+    let mut current_template_id = Some(template_id);
+
+    while let Some(template_id) = current_template_id {
+        // Get the current template by ID
+        let template = get_template_by_id(context, template_id)?;
+
+        // If `overriden_by` is None, return the current template ID
+        if template.overriden_by.is_none() {
+            return Ok(template_id);
+        }
+
+        // Update current_template_id with `overriden_by` for next iteration
+        current_template_id = template.overriden_by;
+    }
+
+    // This should not be reached if the loop is correct, but we return an error for safety
+    Err(FieldError::new(
+        "No valid template found",
+        graphql_value!({ "code": "Invalid Template" }),
+    ))
+}
+
+pub fn get_blacklists_by_template_id(
+    context: &Context,
+    template_id: Uuid,
+) -> FieldResult<BlacklistResponse> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let mut predecessors: Vec<Uuid> = Vec::new();
+    let mut successors: Vec<Uuid> = Vec::new();
+
+    let template_first_version = get_template_first_version(&context, template_id)?;
+
+    let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
+        .filter(
+            recipe_template_blacklists::recipe_template_id
+                .eq(template_first_version)
+                .or(recipe_template_blacklists::recipe_template_predecesor_id.eq(template_first_version)),
+        )
+        .load::<RecipeTemplateBlacklist>(conn)?;
+
+    for blacklist in blacklists {
+        if blacklist.recipe_template_id == template_first_version {
+            predecessors.push(blacklist.recipe_template_predecesor_id);
+        } else if blacklist.recipe_template_predecesor_id == template_first_version {
+            successors.push(blacklist.recipe_template_id)
+        }
+    }
+
+    let res = BlacklistResponse {
+        predecessors,
+        successors,
+    };
+
+    Ok(res)
+}
+
 pub fn create_map_template(
     context: &Context,
     name: String,
@@ -271,8 +358,7 @@ pub fn create_map_template(
 
         let inserted_map_template: MapTemplate = diesel::insert_into(map_templates::table)
             .values(&new_map_template)
-            .get_result(conn)
-            .map_err(|e| FieldError::new(e, juniper::Value::null()))?;
+            .get_result(conn)?;
 
         Ok(inserted_map_template)
     })
@@ -287,6 +373,9 @@ pub fn create_recipe_template(
     commitment: Option<ActionType>,
     fulfills: Option<String>,
     trigger: Option<ActionType>,
+    version: i32,
+    overrides: Option<Uuid>,
+    created_by: Option<Uuid>,
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
@@ -316,15 +405,35 @@ pub fn create_recipe_template(
             commitment.as_ref(),
             fulfills_id.as_ref(),
             trigger.as_ref(),
-            1,
+            version,
             None,
-            None
+            created_by.as_ref(),
         );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
             .values(&new_template)
             .get_result(conn)
             .map_err(|e| FieldError::new(e, juniper::Value::null()))?; // Map diesel::result::Error to FieldError
+
+        //check if this template overrides another one
+        if let Some(template_id) = overrides {
+            let old_template = recipe_templates::table
+                .filter(recipe_templates::id.eq(template_id))
+                .first::<RecipeTemplate>(conn)?;
+
+            if let Some(_) = old_template.overriden_by {
+                return Err(FieldError::new(
+                    "Cannot override template, already overriden",
+                    graphql_value!({ "code": "ALREADY_OVERRIDEN" }),
+                ));
+            }
+
+            diesel::update(
+                recipe_templates::table.filter(recipe_templates::id.eq(old_template.id)),
+            )
+            .set(recipe_templates::overriden_by.eq(inserted_template.id))
+            .execute(conn)?;
+        }
 
         // Initialize the result struct
         let mut res: RecipeTemplateWithRecipeFlows =
@@ -457,27 +566,26 @@ pub fn set_map_template_blacklists(
         .expect("Failed to get DB connection from pool");
 
     conn.transaction::<_, FieldError, _>(|conn| {
-
         //remove all related to selected_template_id
         diesel::delete(recipe_template_blacklists::table)
-        .filter(
-            recipe_template_blacklists::map_template_id.eq(map_template_id)
-                .and(
-                    recipe_template_blacklists::recipe_template_id.eq(selected_template_id)
-                        .or(recipe_template_blacklists::recipe_template_predecesor_id.eq(selected_template_id)),
-                ),
-        )
-        .execute(conn)?;
+            .filter(
+                recipe_template_blacklists::map_template_id
+                    .eq(map_template_id)
+                    .and(
+                        recipe_template_blacklists::recipe_template_id
+                            .eq(selected_template_id)
+                            .or(recipe_template_blacklists::recipe_template_predecesor_id
+                                .eq(selected_template_id)),
+                    ),
+            )
+            .execute(conn)?;
 
         for blacklist in blacklists {
             let template_id = blacklist.recipe_template_id;
             let predecessor_id = blacklist.recipe_template_predecesor_id;
 
-            let new_blacklist = NewRecipeTemplateBlacklist::new(
-                &map_template_id,
-                &template_id,
-                &predecessor_id,
-            );
+            let new_blacklist =
+                NewRecipeTemplateBlacklist::new(&map_template_id, &template_id, &predecessor_id);
             diesel::insert_into(recipe_template_blacklists::table)
                 .values(&new_blacklist)
                 .execute(conn)?;

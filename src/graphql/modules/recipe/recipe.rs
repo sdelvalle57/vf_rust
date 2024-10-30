@@ -1,12 +1,23 @@
 use crate::{
-    common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes}, graphql::{context::Context, modules::common::resource_specification::resource_specification_by_id}, recipe::recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources}
+    common::resource_specification::ResourceSpecification,
+    db::schema::{recipe_processes, recipe_resources, recipes},
+    graphql::{
+        context::Context, modules::{common::resource_specification::resource_specification_by_id, templates::template::{get_blacklists_by_template_id, BlacklistResponse}},
+    },
+    recipe::{
+        process::process::{NewRecipeProcess, RecipeProcess},
+        recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources},
+    }, templates::recipe_template_blacklist::RecipeTemplateBlacklist,
 };
 use diesel::prelude::*;
-use juniper::FieldResult;
+use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject};
 use uuid::Uuid;
 
-
-
+#[derive(GraphQLInputObject)]
+pub struct RecipeProcessRelations {
+    pub recipe_process_id: Uuid,
+    pub output_of: Uuid,
+}
 
 /** Queries */
 pub fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWithResources> {
@@ -54,7 +65,7 @@ pub fn recipes_by_agent(
         let recipe_resources: Vec<RecipeResource> = recipe_resources::table
             .filter(recipe_resources::recipe_id.eq(recipe.id))
             .load::<RecipeResource>(conn)?;
-    
+
         for resource in recipe_resources {
             let spec = resource_specification_by_id(context, resource.resource_specification_id)?;
             resources.push(spec)
@@ -99,4 +110,77 @@ pub fn create_recipe(
     }
 
     Ok(RecipeWithResources::new(inserted_recipe, resources))
+}
+
+pub fn set_recipe_processes(
+    context: &Context,
+    recipe_id: Uuid,
+    recipe_template_ids: Vec<Uuid>,
+    name: String,
+    relations: Vec<RecipeProcessRelations>,
+) -> FieldResult<()> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    conn.transaction::<_, FieldError, _>(|conn| {
+        
+        //check relations are present in recipe_template_ids
+        for relation in relations {
+            let RecipeProcessRelations {
+                recipe_process_id,
+                output_of,
+            } = relation;
+
+            let recipe_process_id_exists = recipe_template_ids
+                .iter()
+                .any(|recipe_id| *recipe_id == recipe_process_id);
+
+            // Check if output_of exists in recipe_template_ids
+            let output_of_exists = recipe_template_ids
+                .iter()
+                .any(|recipe_id| *recipe_id == output_of);
+
+            if !recipe_process_id_exists || !output_of_exists {
+                return Err(FieldError::new(
+                    "Relation references invalid recipe process ID",
+                    graphql_value!({ "code": "Relations Don't match" }),
+                ));
+            }
+        }
+
+        let mut recipes_res: Vec<RecipeProcess> = Vec::new();
+
+        for recipe_template_id in recipe_template_ids {
+            let new_recipe = NewRecipeProcess::new(&recipe_id, &recipe_template_id, &name);
+
+            let inserted_recipe = diesel::insert_into(recipe_processes::table)
+                .values(new_recipe)
+                .get_result(conn)?;
+
+            recipes_res.push(inserted_recipe);
+
+            //get blacklist for each template
+            let template_rules: BlacklistResponse = get_blacklists_by_template_id(&context, recipe_template_id)?;
+
+            /*
+            recipe_process_id -> successor
+            output_of -> predecessor
+             */
+
+            //TODO: continue here
+
+            
+
+
+
+
+
+
+
+        }
+
+        Ok(())
+    })
 }

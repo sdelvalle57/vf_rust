@@ -6,8 +6,6 @@ use crate::{
     db::schema::{recipe_process_relations, recipe_processes}, templates::{recipe_flow_template::{ActionType, EventType, RoleType}}
 };
 
-use super::flow::RecipeProcessFlowResponse;
-
 #[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipe_processes)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -57,7 +55,7 @@ pub struct NewOutpuOf<'a> {
     pub output_of: &'a Uuid
 }
 
-impl<'a>  NewOutpuOf<'a> {
+impl<'a> NewOutpuOf<'a> {
     pub fn new(
         recipe_process_id: &'a Uuid,
         output_of: &'a Uuid,
@@ -70,16 +68,11 @@ impl<'a>  NewOutpuOf<'a> {
 }
 
 
-
 #[derive(GraphQLObject)]
 pub struct RecipeProcessResponse {
     pub id: Uuid,
     pub name: String,
     pub output_of: Vec<Uuid>,
-    pub process_flows: Vec<RecipeProcessFlowResponse>,
-    pub commitment: Option<ActionType>,
-    pub fulfills: Option<Uuid>,
-    pub identifier: String,
 }
 
 impl RecipeProcessResponse {
@@ -87,16 +80,8 @@ impl RecipeProcessResponse {
         RecipeProcessResponse {
             id: recipe_process.id,
             name: recipe_process.name,
-            commitment: recipe_process.commitment,
-            fulfills: recipe_process.fulfills,
-            identifier: recipe_process.identifier,
-            output_of: Vec::new(),
-            process_flows: Vec::new()
+            output_of: Vec::new()
         }
-    }
-
-    pub fn add_recipe_process_flow(&mut self, recipe_process_flow: RecipeProcessFlowResponse) {
-        self.process_flows.push(recipe_process_flow)
     }
 
     pub fn add_output_of(&mut self, id: Uuid) {
@@ -104,16 +89,3 @@ impl RecipeProcessResponse {
     }
 }
 
-
-#[derive(Queryable, GraphQLObject, Debug, Clone)]
-#[diesel(table_name = recipe_process_flows)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct ProcessFlow {
-    pub id: Uuid,
-    pub recipe_process_id: Uuid,
-    pub recipe_flow_template_id: Uuid,
-    pub event_type: EventType,
-    pub role_type: RoleType,
-    pub action: ActionType,
-    pub identifier: String
-}

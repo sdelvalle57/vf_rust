@@ -92,10 +92,7 @@ impl QueryRoot {
         template::get_templates_access_by_agent(context, agent_id)
     }
 
-    /*** Recipe */
-    fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWithResources> {
-        recipe::recipe_by_id(&context, recipe_id)
-    }
+    
 
     /** Locations */
     fn locations_by_agent(context: &Context, agent_id: Uuid) -> FieldResult<Vec<Location>> {
@@ -109,11 +106,8 @@ impl QueryRoot {
         recipe::recipes_by_agent(&context, agent_id)
     }
 
+    fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWithResources> {
+        recipe::recipe_by_id(&context, recipe_id)
+    }
 
-    // fn get_recipe_processes(
-    //     context: &Context,
-    //     recipe_id: Uuid
-    // ) -> FieldResult<RecipeProcessesResponse> {
-    //     process::get_recipe_processes(context, recipe_id)
-    // }
 }
