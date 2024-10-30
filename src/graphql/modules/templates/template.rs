@@ -316,6 +316,9 @@ pub fn create_recipe_template(
             commitment.as_ref(),
             fulfills_id.as_ref(),
             trigger.as_ref(),
+            1,
+            None,
+            None
         );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)

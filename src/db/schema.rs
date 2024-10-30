@@ -257,17 +257,12 @@ diesel::table! {
 
 diesel::table! {
     use diesel::sql_types::*;
-    use super::sql_types::ActionTypeEnum;
 
     recipe_processes (id) {
         id -> Uuid,
         recipe_id -> Uuid,
         recipe_template_id -> Nullable<Uuid>,
         name -> Text,
-        commitment -> Nullable<ActionTypeEnum>,
-        fulfills -> Nullable<Uuid>,
-        identifier -> Text,
-        trigger -> Nullable<ActionTypeEnum>,
     }
 }
 
@@ -305,6 +300,9 @@ diesel::table! {
         commitment -> Nullable<ActionTypeEnum>,
         fulfills -> Nullable<Uuid>,
         trigger -> Nullable<ActionTypeEnum>,
+        version -> Int4,
+        overriden_by -> Nullable<Uuid>,
+        created_by -> Nullable<Uuid>,
     }
 }
 
@@ -364,6 +362,7 @@ diesel::joinable!(recipe_processes -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> resource_specifications (resource_specification_id));
 diesel::joinable!(recipe_template_blacklists -> map_templates (map_template_id));
+diesel::joinable!(recipe_templates -> agents (created_by));
 diesel::joinable!(recipe_templates -> map_templates (map_template_id));
 diesel::joinable!(recipe_templates_access -> agents (agent_id));
 diesel::joinable!(recipe_templates_access -> recipe_templates (recipe_template_id));

@@ -15,11 +15,7 @@ pub struct RecipeProcess {
     pub id: Uuid,
     pub recipe_id: Uuid,
     pub recipe_template_id: Option<Uuid>,
-    pub name: String,
-    pub commitment: Option<ActionType>,
-    pub fulfills: Option<Uuid>,
-    pub identifier: String,
-    pub trigger: Option<ActionType>
+    pub name: String
 }
 
 #[derive(Insertable)]
@@ -27,31 +23,19 @@ pub struct RecipeProcess {
 pub struct NewRecipeProcess<'a> {
     pub recipe_id: &'a Uuid,
     pub recipe_template_id: &'a Uuid,
-    pub name: &'a str,
-    pub commitment: Option<&'a ActionType>,
-    pub fulfills: Option<&'a Uuid>,
-    pub identifier: &'a str,
-    pub trigger: Option<&'a ActionType>
+    pub name: &'a str
 }
 
 impl<'a>  NewRecipeProcess<'a> {
     pub fn new(
         recipe_id: &'a Uuid,
         recipe_template_id: &'a Uuid,
-        name: &'a str,
-        commitment: Option<&'a ActionType>,
-        fulfills: Option<&'a Uuid>,
-        identifier: &'a str,
-        trigger: Option<&'a ActionType>
+        name: &'a str
     ) -> Self {
         NewRecipeProcess {
             recipe_id,
             recipe_template_id, 
-            name,
-            commitment,
-            fulfills,
-            identifier,
-            trigger
+            name
         }
     }
 }

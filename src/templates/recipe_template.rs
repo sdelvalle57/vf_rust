@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::db::schema::recipe_templates;
 
 
-use super::{recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields}, recipe_template_blacklist::RecipeTemplateBlacklist};
+use super::{recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields}};
 
 
 #[derive(Queryable, GraphQLObject, Debug)]
@@ -23,7 +23,10 @@ pub struct RecipeTemplate {
     pub name: String,
     pub commitment: Option<ActionType>,
     pub fulfills: Option<Uuid>,
-    pub trigger: Option<ActionType>
+    pub trigger: Option<ActionType>,
+    pub version: i32,
+    pub overriden_by: Option<Uuid>,
+    pub created_by: Option<Uuid>
 }
 
 
@@ -35,7 +38,10 @@ pub struct NewRecipeTemplate<'a> {
     pub name: &'a str,
     pub commitment: Option<&'a ActionType>,
     pub fulfills: Option<&'a Uuid>,
-    pub trigger: Option<&'a ActionType>
+    pub trigger: Option<&'a ActionType>,
+    pub version:i32,
+    pub overriden_by: Option<&'a Uuid>,
+    pub created_by: Option<&'a Uuid>
 }
 
 impl<'a> NewRecipeTemplate<'a> {
@@ -45,7 +51,10 @@ impl<'a> NewRecipeTemplate<'a> {
         name: &'a str,
         commitment: Option<&'a ActionType>,
         fulfills: Option<&'a Uuid>,
-        trigger: Option<&'a ActionType>
+        trigger: Option<&'a ActionType>,
+        version: i32,
+        overriden_by: Option<&'a Uuid>,
+        created_by: Option<&'a Uuid>
     ) -> Self {
         NewRecipeTemplate {
             map_template_id,
@@ -53,7 +62,10 @@ impl<'a> NewRecipeTemplate<'a> {
             name,
             commitment,
             fulfills,
-            trigger
+            trigger,
+            version,
+            overriden_by,
+            created_by
         }
     }
 }
@@ -67,6 +79,9 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub fulfills: Option<Uuid>,
     pub identifier: String,
     pub trigger: Option<ActionType>,
+    pub version: i32,
+    pub overriden_by: Option<Uuid>,
+    pub created_by: Option<Uuid>,
     pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
 }
 
@@ -80,6 +95,9 @@ impl RecipeTemplateWithRecipeFlows {
             fulfills: recipe_template.fulfills,
             identifier: recipe_template.identifier.clone(),
             trigger: recipe_template.trigger,
+            version: recipe_template.version,
+            overriden_by: recipe_template.overriden_by,
+            created_by: recipe_template.created_by,
             recipe_flows: Vec::new()
         }
     }
