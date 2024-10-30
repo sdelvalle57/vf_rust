@@ -16,7 +16,6 @@ CREATE TYPE field_class_enum AS ENUM (
     'custom',
     'referenceDocumentNumber',
     'referenceDocumentType'
-
 );
 CREATE TYPE field_group_class_enum AS ENUM ('ResourceSpecification', 'EconomicResource', 'Location', 'Custom', 'ReferenceDocument');
 CREATE TYPE field_type_enum AS ENUM ('Text', 'Date', 'Number', 'Select');
@@ -72,7 +71,10 @@ CREATE TABLE IF NOT EXISTS recipe_templates (
     name TEXT NOT NULL,
     commitment action_type_enum,
     fulfills UUID REFERENCES recipe_templates(id),
-    trigger action_type_enum
+    trigger action_type_enum,
+    version INTEGER NOT NULL DEFAULT 1,
+    overrides UUID REFERENCES recipe_templates(id),
+    created_by UUID REFERENCES agents(id)
 );
 
 -- ProcessWhitelistRules, 
