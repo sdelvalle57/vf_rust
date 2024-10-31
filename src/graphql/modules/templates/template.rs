@@ -1,8 +1,6 @@
 use crate::{
     db::schema::{
-        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
-        recipe_flow_templates, recipe_template_blacklists, recipe_templates,
-        recipe_templates_access,
+        map_templates, recipe_flow_template_data_fields, recipe_flow_template_group_data_fields, recipe_flow_templates, recipe_template_blacklists, recipe_templates, recipe_templates_access
     },
     graphql::context::Context,
     templates::{
@@ -24,7 +22,7 @@ use crate::{
         recipe_template_blacklist::{NewRecipeTemplateBlacklist, RecipeTemplateBlacklist},
     },
 };
-use diesel::prelude::*;
+use diesel::{prelude::*, result::Error::NotFound};
 use diesel::result::Error as DieselError;
 use juniper::{graphql_value, FieldError, FieldResult};
 use uuid::Uuid;
@@ -207,7 +205,7 @@ pub fn get_map_template_by_id(context: &Context, map_id: Uuid) -> FieldResult<Ma
 
 pub fn get_template_by_id(
     context: &Context,
-    template_id: Uuid,
+    template_id: &Uuid,
 ) -> FieldResult<RecipeTemplateWithRecipeFlows> {
     let conn = &mut context
         .pool
@@ -240,7 +238,7 @@ pub fn get_templates_access_by_agent(
 
     for a in accesses {
         let template_id = a.recipe_template_id;
-        let mut recipe = get_template_by_id(context, template_id)?;
+        let mut recipe = get_template_by_id(context, &template_id)?;
         res.push(recipe)
     }
 
@@ -263,85 +261,46 @@ fn get_blacklists_by_map_template(
     Ok(blacklists)
 }
 
-fn get_recursive_templates(context: &Context, template_id: Uuid) -> FieldResult<Vec<Uuid>> {
-    let mut res: Vec<Uuid> = Vec::new();
-    let mut current_template_id = Some(template_id);
 
-    // Traverse templates recursively
-    while let Some(template_id) = current_template_id {
-        // Get the current template by ID
-        let template = get_template_by_id(context, template_id)?;
+pub fn get_template_first_version(context: &Context, template_id: &Uuid) -> FieldResult<Uuid> {
+    let template = get_template_by_id(context, &template_id)?;
 
-        // Add the current template ID to the result vector
-        res.push(template_id);
-
-        // Update current_template_id with `overriden_by` if it exists, otherwise end loop
-        current_template_id = template.overriden_by;
+    if let Some(first_version) = template.first_version {
+        Ok(first_version)
+    } else {
+        Ok(*template_id)
     }
 
-    Ok(res)
 }
 
-fn get_template_first_version(context: &Context, template_id: Uuid) -> FieldResult<Uuid> {
-    let mut current_template_id = Some(template_id);
-
-    while let Some(template_id) = current_template_id {
-        // Get the current template by ID
-        let template = get_template_by_id(context, template_id)?;
-
-        // If `overriden_by` is None, return the current template ID
-        if template.overriden_by.is_none() {
-            return Ok(template_id);
-        }
-
-        // Update current_template_id with `overriden_by` for next iteration
-        current_template_id = template.overriden_by;
-    }
-
-    // This should not be reached if the loop is correct, but we return an error for safety
-    Err(FieldError::new(
-        "No valid template found",
-        graphql_value!({ "code": "Invalid Template" }),
-    ))
-}
-
-pub fn get_blacklists_by_template_id(
+pub fn check_blacklist_connection(
     context: &Context,
     template_id: Uuid,
-) -> FieldResult<BlacklistResponse> {
+    predecessor: Uuid,
+) -> FieldResult<bool> {
     let conn = &mut context
         .pool
         .get()
         .expect("Failed to get DB connection from pool");
 
-    let mut predecessors: Vec<Uuid> = Vec::new();
-    let mut successors: Vec<Uuid> = Vec::new();
-
-    let template_first_version = get_template_first_version(&context, template_id)?;
-
-    let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
+    let result = recipe_template_blacklists::table
         .filter(
             recipe_template_blacklists::recipe_template_id
-                .eq(template_first_version)
-                .or(recipe_template_blacklists::recipe_template_predecesor_id.eq(template_first_version)),
+                .eq(template_id)
+                .and(recipe_template_blacklists::recipe_template_predecesor_id.eq(predecessor)),
         )
-        .load::<RecipeTemplateBlacklist>(conn)?;
+        .first::<RecipeTemplateBlacklist>(conn);
 
-    for blacklist in blacklists {
-        if blacklist.recipe_template_id == template_first_version {
-            predecessors.push(blacklist.recipe_template_predecesor_id);
-        } else if blacklist.recipe_template_predecesor_id == template_first_version {
-            successors.push(blacklist.recipe_template_id)
-        }
+    match result {
+        Ok(_) => Ok(true),                              
+        Err(NotFound) => Ok(false), 
+        Err(e) => Err(FieldError::new(
+            e,
+            graphql_value!({ "code": "Invalid Template" }),
+        ))
     }
-
-    let res = BlacklistResponse {
-        predecessors,
-        successors,
-    };
-
-    Ok(res)
 }
+
 
 pub fn create_map_template(
     context: &Context,
@@ -408,6 +367,7 @@ pub fn create_recipe_template(
             version,
             None,
             created_by.as_ref(),
+            None
         );
 
         let inserted_template: RecipeTemplate = diesel::insert_into(recipe_templates::table)
@@ -654,7 +614,7 @@ mod tests {
     }
 
     #[test]
-    fn logic_delete() {
+    fn logic_delete_templates() {
         // Use the test pool instead of `context.pool`
         let pool = get_test_pool();
         let conn = &mut pool.get().expect("Failed to get DB connection from pool");
@@ -684,6 +644,11 @@ mod tests {
             let remaining_rows: i64 = recipe_templates_access::table.count().get_result(conn)?;
             assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
 
+             //Delete recipe_template_blacklists
+             diesel::delete(recipe_template_blacklists::table).execute(conn)?;
+             let remaining_rows: i64 = recipe_template_blacklists::table.count().get_result(conn)?;
+             assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
             //Delete recipe_templates
             diesel::delete(recipe_templates::table).execute(conn)?;
             let remaining_rows: i64 = recipe_templates::table.count().get_result(conn)?;
@@ -699,4 +664,6 @@ mod tests {
 
         assert!(result.is_ok(), "Transaction failed: {:?}", result);
     }
+
+
 }

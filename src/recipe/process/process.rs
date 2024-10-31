@@ -2,9 +2,7 @@ use diesel::prelude::{Insertable, Queryable};
 use juniper::GraphQLObject;
 use uuid::Uuid;
 
-use crate::{
-    db::schema::{recipe_process_relations, recipe_processes}, templates::{recipe_flow_template::{ActionType, EventType, RoleType}}
-};
+use crate::db::schema::{recipe_process_relations, recipe_processes};
 
 #[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipe_processes)]
@@ -42,27 +40,31 @@ impl<'a>  NewRecipeProcess<'a> {
 #[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipe_process_relations)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct OutputOf {
+pub struct ProcessRelation {
     pub id: Uuid,
+    pub recipe_id: Uuid,
     pub recipe_process_id: Uuid,
-    pub output_of: Uuid
+    pub predecessor: Uuid
 }
 
 #[derive(Insertable)]
 #[diesel(table_name = recipe_process_relations)]
-pub struct NewOutpuOf<'a> {
+pub struct NewProcessRelation<'a> {
+    pub recipe_id: &'a Uuid,
     pub recipe_process_id: &'a Uuid,
-    pub output_of: &'a Uuid
+    pub predecessor: &'a Uuid
 }
 
-impl<'a> NewOutpuOf<'a> {
+impl<'a> NewProcessRelation<'a> {
     pub fn new(
+        recipe_id: &'a Uuid,
         recipe_process_id: &'a Uuid,
-        output_of: &'a Uuid,
+        predecessor: &'a Uuid,
     ) -> Self {
-        NewOutpuOf {
+        NewProcessRelation {
+            recipe_id,
             recipe_process_id,
-            output_of
+            predecessor
         }
     }
 }
@@ -70,22 +72,20 @@ impl<'a> NewOutpuOf<'a> {
 
 #[derive(GraphQLObject)]
 pub struct RecipeProcessResponse {
-    pub id: Uuid,
-    pub name: String,
-    pub output_of: Vec<Uuid>,
+    pub recipe_process: RecipeProcess,
+    pub predecessors: Vec<Uuid>,
 }
 
 impl RecipeProcessResponse {
     pub fn new(recipe_process: RecipeProcess) -> Self {
         RecipeProcessResponse {
-            id: recipe_process.id,
-            name: recipe_process.name,
-            output_of: Vec::new()
+            recipe_process,
+            predecessors: Vec::new()
         }
     }
 
-    pub fn add_output_of(&mut self, id: Uuid) {
-        self.output_of.push(id)
+    pub fn add_predecessor(&mut self, id: Uuid) {
+        self.predecessors.push(id)
     }
 }
 

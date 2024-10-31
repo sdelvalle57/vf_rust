@@ -81,7 +81,7 @@ impl QueryRoot {
     /** Recipe Templates */
 
     fn get_template_by_id(context: &Context, template_id: Uuid) -> FieldResult<RecipeTemplateWithRecipeFlows> {
-        template::get_template_by_id(context, template_id)
+        template::get_template_by_id(context, &template_id)
     }
 
     /** Recipe Template Access */

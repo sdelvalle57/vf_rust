@@ -1,22 +1,29 @@
 use crate::{
     common::resource_specification::ResourceSpecification,
-    db::schema::{recipe_processes, recipe_resources, recipes},
+    db::schema::{recipe_process_relations, recipe_processes, recipe_resources, recipes},
     graphql::{
-        context::Context, modules::{common::resource_specification::resource_specification_by_id, templates::template::{get_blacklists_by_template_id, BlacklistResponse}},
+        context::Context,
+        modules::{
+            common::resource_specification::resource_specification_by_id,
+            templates::template::{check_blacklist_connection, get_template_first_version},
+        },
     },
     recipe::{
-        process::process::{NewRecipeProcess, RecipeProcess},
+        process::process::{
+            NewProcessRelation, NewRecipeProcess, ProcessRelation, RecipeProcess,
+            RecipeProcessResponse,
+        },
         recipe::{NewRecipe, NewRecipeResource, Recipe, RecipeResource, RecipeWithResources},
-    }, templates::recipe_template_blacklist::RecipeTemplateBlacklist,
+    },
 };
 use diesel::prelude::*;
 use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject};
 use uuid::Uuid;
 
 #[derive(GraphQLInputObject)]
-pub struct RecipeProcessRelations {
-    pub recipe_process_id: Uuid,
-    pub output_of: Uuid,
+pub struct RecipeProcessRelation {
+    pub template_id: Uuid,
+    pub template_predecessor_id: Uuid,
 }
 
 /** Queries */
@@ -37,11 +44,30 @@ pub fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWit
         .load::<RecipeResource>(conn)?;
 
     for resource in recipe_resources {
-        let spec = resource_specification_by_id(context, resource.resource_specification_id)?;
+        let spec = resource_specification_by_id(&context, resource.resource_specification_id)?;
         resources.push(spec)
     }
 
-    Ok(RecipeWithResources::new(recipe, resources))
+    let recipe_relations = recipe_relations(&context, recipe_id)?;
+
+    Ok(RecipeWithResources::new(
+        recipe,
+        resources,
+        recipe_relations,
+    ))
+}
+
+fn recipe_relations(context: &Context, recipe_id: Uuid) -> FieldResult<Vec<ProcessRelation>> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let res: Vec<ProcessRelation> = recipe_process_relations::table
+        .filter(recipe_process_relations::recipe_id.eq(recipe_id))
+        .load::<ProcessRelation>(conn)?;
+
+    Ok(res)
 }
 
 pub fn recipes_by_agent(
@@ -71,7 +97,13 @@ pub fn recipes_by_agent(
             resources.push(spec)
         }
 
-        recipes_response.push(RecipeWithResources::new(recipe, resources))
+        let recipe_relations = recipe_relations(&context, recipe.id)?;
+
+        recipes_response.push(RecipeWithResources::new(
+            recipe,
+            resources,
+            recipe_relations,
+        ))
     }
 
     Ok(recipes_response)
@@ -109,78 +141,147 @@ pub fn create_recipe(
             .execute(conn)?;
     }
 
-    Ok(RecipeWithResources::new(inserted_recipe, resources))
+    Ok(RecipeWithResources::new(
+        inserted_recipe,
+        resources,
+        Vec::new(),
+    ))
 }
 
 pub fn set_recipe_processes(
     context: &Context,
     recipe_id: Uuid,
-    recipe_template_ids: Vec<Uuid>,
+    template_ids: Vec<Uuid>,
     name: String,
-    relations: Vec<RecipeProcessRelations>,
-) -> FieldResult<()> {
+    relations: Vec<RecipeProcessRelation>,
+) -> FieldResult<Vec<RecipeProcessResponse>> {
     let conn = &mut context
         .pool
         .get()
         .expect("Failed to get DB connection from pool");
 
     conn.transaction::<_, FieldError, _>(|conn| {
-        
-        //check relations are present in recipe_template_ids
-        for relation in relations {
-            let RecipeProcessRelations {
-                recipe_process_id,
-                output_of,
-            } = relation;
+        let mut res: Vec<RecipeProcessResponse> = Vec::new();
 
-            let recipe_process_id_exists = recipe_template_ids
-                .iter()
-                .any(|recipe_id| *recipe_id == recipe_process_id);
-
-            // Check if output_of exists in recipe_template_ids
-            let output_of_exists = recipe_template_ids
-                .iter()
-                .any(|recipe_id| *recipe_id == output_of);
-
-            if !recipe_process_id_exists || !output_of_exists {
-                return Err(FieldError::new(
-                    "Relation references invalid recipe process ID",
-                    graphql_value!({ "code": "Relations Don't match" }),
-                ));
-            }
-        }
-
-        let mut recipes_res: Vec<RecipeProcess> = Vec::new();
-
-        for recipe_template_id in recipe_template_ids {
-            let new_recipe = NewRecipeProcess::new(&recipe_id, &recipe_template_id, &name);
+        for template_id in template_ids {
+            let new_recipe = NewRecipeProcess::new(&recipe_id, &template_id, &name);
 
             let inserted_recipe = diesel::insert_into(recipe_processes::table)
                 .values(new_recipe)
                 .get_result(conn)?;
 
-            recipes_res.push(inserted_recipe);
+            let mut recipe_res = RecipeProcessResponse::new(inserted_recipe);
 
-            //get blacklist for each template
-            let template_rules: BlacklistResponse = get_blacklists_by_template_id(&context, recipe_template_id)?;
+            //get all predecessors
+            let filtered_relations: Vec<&RecipeProcessRelation> = relations
+                .iter()
+                .filter(|r| r.template_id == template_id)
+                .collect();
 
-            /*
-            recipe_process_id -> successor
-            output_of -> predecessor
-             */
+            for relation in filtered_relations {
+                let is_not_blacklisted = can_connect(&context, &relation)?;
 
-            //TODO: continue here
-
-            
-
-
-
-
-
-
-
+                if is_not_blacklisted {
+                    let new_relation = NewProcessRelation::new(
+                        &recipe_id,
+                        &relation.template_id,
+                        &relation.template_predecessor_id,
+                    );
+                    let inserted_relation: ProcessRelation =
+                        diesel::insert_into(recipe_process_relations::table)
+                            .values(new_relation)
+                            .get_result::<ProcessRelation>(conn)?;
+                    recipe_res.add_predecessor(inserted_relation.predecessor);
+                } else {
+                    return Err(FieldError::new(
+                        "Invalid Template Relation",
+                        graphql_value!({ "code": "Invalid Template" }),
+                    ));
+                }
+            }
+            res.push(recipe_res);
         }
-
-        Ok(())
+        Ok(res)
     })
+}
+
+fn can_connect(context: &Context, relation: &RecipeProcessRelation) -> FieldResult<bool> {
+    let RecipeProcessRelation {
+        template_id,
+        template_predecessor_id,
+    } = relation;
+
+    let recipe_process_id_first_version = get_template_first_version(&context, template_id)?;
+    let predecessor_first_version = get_template_first_version(&context, template_predecessor_id)?;
+
+    let res = check_blacklist_connection(
+        &context,
+        recipe_process_id_first_version,
+        predecessor_first_version,
+    )?;
+
+    Ok(res)
+}
+
+mod tests {
+    use std::env;
+
+    use super::*;
+    use diesel::prelude::*;
+    use diesel::r2d2;
+    use diesel::r2d2::ConnectionManager;
+    use diesel::result::Error as DieselError;
+    use diesel::PgConnection;
+
+    use crate::db::schema::{
+        recipe_flow_template_data_fields, recipe_flow_template_group_data_fields,
+        recipe_flow_templates, recipe_templates_access,
+    };
+
+    // Initialize the pool for testing purposes
+    fn get_test_pool() -> r2d2::Pool<ConnectionManager<PgConnection>> {
+        let database_url = "postgres://value_flows:valueflows@localhost/vf26";
+        let manager = ConnectionManager::<PgConnection>::new(database_url);
+        r2d2::Pool::builder()
+            .build(manager)
+            .expect("Failed to create pool.")
+    }
+
+    #[test]
+    fn logic_delete_recipes() {
+        // Use the test pool instead of `context.pool`
+        let pool = get_test_pool();
+        let conn = &mut pool.get().expect("Failed to get DB connection from pool");
+
+        let result = conn.transaction::<_, DieselError, _>(|conn| {
+            //Delete recipe_process_relations
+            diesel::delete(recipe_process_relations::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_process_relations::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipe_processes
+            diesel::delete(recipe_processes::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_processes::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipe_resources
+            diesel::delete(recipe_resources::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_resources::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipe_templates_access
+            diesel::delete(recipe_templates_access::table).execute(conn)?;
+            let remaining_rows: i64 = recipe_templates_access::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            //Delete recipes
+            diesel::delete(recipes::table).execute(conn)?;
+            let remaining_rows: i64 = recipes::table.count().get_result(conn)?;
+            assert_eq!(remaining_rows, 0); // Ensure all rows are deleted
+
+            Ok(())
+        });
+
+        assert!(result.is_ok(), "Transaction failed: {:?}", result);
+    }
 }

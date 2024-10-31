@@ -159,7 +159,8 @@ diesel::table! {
     recipe_process_relations (id) {
         id -> Uuid,
         recipe_process_id -> Uuid,
-        output_of -> Uuid,
+        predecessor -> Uuid,
+        recipe_id -> Uuid,
     }
 }
 
@@ -211,6 +212,7 @@ diesel::table! {
         version -> Int4,
         overriden_by -> Nullable<Uuid>,
         created_by -> Nullable<Uuid>,
+        first_version -> Nullable<Uuid>,
     }
 }
 
@@ -257,6 +259,7 @@ diesel::joinable!(locations -> agents (agent_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_template_group_data_fields (group_id));
 diesel::joinable!(recipe_flow_template_data_fields -> recipe_flow_templates (recipe_flow_template_id));
 diesel::joinable!(recipe_flow_templates -> recipe_templates (recipe_template_id));
+diesel::joinable!(recipe_process_relations -> recipes (recipe_id));
 diesel::joinable!(recipe_processes -> recipe_templates (recipe_template_id));
 diesel::joinable!(recipe_processes -> recipes (recipe_id));
 diesel::joinable!(recipe_resources -> recipes (recipe_id));

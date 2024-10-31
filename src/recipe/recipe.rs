@@ -5,7 +5,9 @@ use uuid::Uuid;
 
 use crate::{
     common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes} 
-}; 
+};
+
+use super::process::process::ProcessRelation; 
 
 #[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipes)]
@@ -46,7 +48,8 @@ pub struct NewRecipeResource {
 #[derive(GraphQLObject, Debug)]
 pub struct RecipeWithResources {
     recipe: Recipe,
-    resource_specifications: Vec<ResourceSpecification>
+    resource_specifications: Vec<ResourceSpecification>,
+    relations: Vec<ProcessRelation>
 }
 
 impl<'a>  NewRecipe<'a> {
@@ -77,10 +80,11 @@ impl NewRecipeResource {
 }
 
 impl RecipeWithResources {
-    pub fn new(recipe: Recipe, resource_specifications: Vec<ResourceSpecification>) -> Self {
+    pub fn new(recipe: Recipe, resource_specifications: Vec<ResourceSpecification>, relations: Vec<ProcessRelation>) -> Self {
         RecipeWithResources {
             recipe,
-            resource_specifications
+            resource_specifications,
+            relations
         }
     }
 }

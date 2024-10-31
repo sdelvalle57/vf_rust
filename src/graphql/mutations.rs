@@ -4,13 +4,13 @@ use uuid::Uuid;
 use crate::{
     common::{
         agent::Agent, economic_resource::EconomicResource, location::Location, resource_specification::{ResourceSpecification, ResourceType}
-    }, graphql::context::Context, recipe::recipe::RecipeWithResources, templates::{map_template::{MapTemplate, MapTemplateResponse, TemplateType}, recipe_flow_template::ActionType, recipe_template::RecipeTemplateWithRecipeFlows, recipe_template_access::RecipeTemplateAccess}
+    }, graphql::context::Context, recipe::{process::process::RecipeProcessResponse, recipe::RecipeWithResources}, templates::{map_template::{MapTemplate, MapTemplateResponse, TemplateType}, recipe_flow_template::ActionType, recipe_template::RecipeTemplateWithRecipeFlows, recipe_template_access::RecipeTemplateAccess}
 };
 
 use super::modules::{
     common::{agent, economic_resource, location, resource_specification}, 
     // process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, 
-    recipe::recipe::{self, RecipeProcessRelations}, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
+    recipe::recipe::{self, RecipeProcessRelation}, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
 };
 
 pub struct MutationRoot;
@@ -154,8 +154,8 @@ impl MutationRoot {
         recipe_id: Uuid,
         recipe_template_ids: Vec<Uuid>,
         name: String,
-        relations: Vec<RecipeProcessRelations>
-    ) -> FieldResult<()> {
+        relations: Vec<RecipeProcessRelation>
+    ) -> FieldResult<Vec<RecipeProcessResponse>> {
         recipe::set_recipe_processes(&context, recipe_id, recipe_template_ids, name, relations)
     } 
 }

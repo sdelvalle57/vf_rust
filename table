@@ -74,7 +74,8 @@ CREATE TABLE IF NOT EXISTS recipe_templates (
     trigger action_type_enum,
     version INTEGER NOT NULL DEFAULT 1,
     overriden_by UUID REFERENCES recipe_templates(id),
-    created_by UUID REFERENCES agents(id)
+    created_by UUID REFERENCES agents(id),
+    first_version UUID REFERENCES recipe_templates(id)
 );
 
 -- ProcessWhitelistRules, 
@@ -173,7 +174,8 @@ CREATE TABLE IF NOT EXISTS recipe_processes (
 -- Process connection relations
 CREATE TABLE IF NOT EXISTS recipe_process_relations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    recipe_id UUID NOT NULL REFERENCES recipes(id),
     recipe_process_id UUID NOT NULL REFERENCES recipe_processes(id),
-    output_of UUID NOT NULL REFERENCES recipe_processes(id)  -- Corrected the syntax here
+    predecessor UUID NOT NULL REFERENCES recipe_processes(id)  
 );
 

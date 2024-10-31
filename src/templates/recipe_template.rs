@@ -8,8 +8,7 @@ use uuid::Uuid;
 
 use crate::db::schema::recipe_templates;
 
-
-use super::{recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields}};
+use super::recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields};
 
 
 #[derive(Queryable, GraphQLObject, Debug)]
@@ -26,7 +25,8 @@ pub struct RecipeTemplate {
     pub trigger: Option<ActionType>,
     pub version: i32,
     pub overriden_by: Option<Uuid>,
-    pub created_by: Option<Uuid>
+    pub created_by: Option<Uuid>,
+    pub first_version: Option<Uuid>
 }
 
 
@@ -41,7 +41,8 @@ pub struct NewRecipeTemplate<'a> {
     pub trigger: Option<&'a ActionType>,
     pub version:i32,
     pub overriden_by: Option<&'a Uuid>,
-    pub created_by: Option<&'a Uuid>
+    pub created_by: Option<&'a Uuid>,
+    pub first_version: Option<&'a Uuid>
 }
 
 impl<'a> NewRecipeTemplate<'a> {
@@ -54,7 +55,8 @@ impl<'a> NewRecipeTemplate<'a> {
         trigger: Option<&'a ActionType>,
         version: i32,
         overriden_by: Option<&'a Uuid>,
-        created_by: Option<&'a Uuid>
+        created_by: Option<&'a Uuid>,
+        first_version: Option<&'a Uuid>
     ) -> Self {
         NewRecipeTemplate {
             map_template_id,
@@ -65,7 +67,8 @@ impl<'a> NewRecipeTemplate<'a> {
             trigger,
             version,
             overriden_by,
-            created_by
+            created_by,
+            first_version
         }
     }
 }
@@ -82,6 +85,7 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub version: i32,
     pub overriden_by: Option<Uuid>,
     pub created_by: Option<Uuid>,
+    pub first_version: Option<Uuid>,
     pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
 }
 
@@ -98,6 +102,7 @@ impl RecipeTemplateWithRecipeFlows {
             version: recipe_template.version,
             overriden_by: recipe_template.overriden_by,
             created_by: recipe_template.created_by,
+            first_version: recipe_template.first_version,
             recipe_flows: Vec::new()
         }
     }
