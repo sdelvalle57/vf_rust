@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::db::schema::recipe_templates;
 
-use super::recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields};
+use super::{recipe_flow_template::{ActionType, RecipeFlowTemplateWithDataFields}, recipe_template_blacklist::RecipeTemplateBlacklist};
 
 
 #[derive(Queryable, GraphQLObject, Debug)]
@@ -86,7 +86,8 @@ pub struct RecipeTemplateWithRecipeFlows {
     pub overriden_by: Option<Uuid>,
     pub created_by: Option<Uuid>,
     pub first_version: Option<Uuid>,
-    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>
+    pub recipe_flows: Vec<RecipeFlowTemplateWithDataFields>,
+    pub blacklists: Vec<RecipeTemplateBlacklist>
 }
 
 impl RecipeTemplateWithRecipeFlows {
@@ -103,11 +104,16 @@ impl RecipeTemplateWithRecipeFlows {
             overriden_by: recipe_template.overriden_by,
             created_by: recipe_template.created_by,
             first_version: recipe_template.first_version,
-            recipe_flows: Vec::new()
+            recipe_flows: Vec::new(),
+            blacklists: Vec::new()
         }
     }
 
     pub fn add_recipe_flow(&mut self, recipe_flow: RecipeFlowTemplateWithDataFields) {
         self.recipe_flows.push(recipe_flow)
+    }
+
+    pub fn set_blacklists(&mut self, blacklists: Vec<RecipeTemplateBlacklist>) {
+        self.blacklists = blacklists
     }
 }

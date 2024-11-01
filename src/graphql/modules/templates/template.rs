@@ -239,6 +239,8 @@ pub fn get_templates_access_by_agent(
     for a in accesses {
         let template_id = a.recipe_template_id;
         let mut recipe = get_template_by_id(context, &template_id)?;
+        let blacklists = get_blacklists_by_template(&context, template_id)?;
+        recipe.set_blacklists(blacklists);
         res.push(recipe)
     }
 
@@ -256,6 +258,23 @@ fn get_blacklists_by_map_template(
 
     let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
         .filter(recipe_template_blacklists::map_template_id.eq(map_template_id))
+        .load::<RecipeTemplateBlacklist>(conn)?;
+
+    Ok(blacklists)
+}
+
+fn get_blacklists_by_template(
+    context: &Context,
+    template_id: Uuid,
+) -> FieldResult<Vec<RecipeTemplateBlacklist>> {
+    let conn = &mut context
+        .pool
+        .get()
+        .expect("Failed to get DB connection from pool");
+
+    let blacklists: Vec<RecipeTemplateBlacklist> = recipe_template_blacklists::table
+        .filter(recipe_template_blacklists::recipe_template_id.eq(template_id)
+        .or(recipe_template_blacklists::recipe_template_predecesor_id.eq(template_id)))
         .load::<RecipeTemplateBlacklist>(conn)?;
 
     Ok(blacklists)
