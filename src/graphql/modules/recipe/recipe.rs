@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     common::resource_specification::ResourceSpecification,
     db::schema::{recipe_process_relations, recipe_processes, recipe_resources, recipes},
@@ -5,7 +7,7 @@ use crate::{
         context::Context,
         modules::{
             common::resource_specification::resource_specification_by_id,
-            templates::template::{check_blacklist_connection, get_template_first_version},
+            templates::template::{get_template_first_version, is_blacklisted},
         },
     },
     recipe::{
@@ -17,13 +19,28 @@ use crate::{
     },
 };
 use diesel::prelude::*;
-use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject};
+use juniper::{FieldError, FieldResult, GraphQLInputObject};
 use uuid::Uuid;
 
 #[derive(GraphQLInputObject)]
 pub struct RecipeProcessRelation {
     pub template_id: Uuid,
     pub template_predecessor_id: Uuid,
+}
+
+#[derive(GraphQLInputObject)]
+
+pub struct Predecessor {
+    node: String,
+    template: Uuid,
+}
+
+#[derive(GraphQLInputObject)]
+pub struct InputProcessRelation {
+    pub node: String,
+    pub name: String,
+    pub template: Uuid,
+    pub predecessors: Vec<Predecessor>,
 }
 
 /** Queries */
@@ -48,13 +65,19 @@ pub fn recipe_by_id(context: &Context, recipe_id: Uuid) -> FieldResult<RecipeWit
         resources.push(spec)
     }
 
-    let recipe_relations = recipe_relations(&context, recipe_id)?;
+    let recipe_relations = recipe_processes(&context, recipe_id)?;
 
     Ok(RecipeWithResources::new(
         recipe,
         resources,
         recipe_relations,
     ))
+}
+
+fn recipe_processes(context: &Context, recipe_id: Uuid) -> FieldResult<Vec<RecipeProcessResponse>>{
+    //TODO: impplenent
+    let proce
+    Ok(Vec::new())
 }
 
 fn recipe_relations(context: &Context, recipe_id: Uuid) -> FieldResult<Vec<ProcessRelation>> {
@@ -97,7 +120,7 @@ pub fn recipes_by_agent(
             resources.push(spec)
         }
 
-        let recipe_relations = recipe_relations(&context, recipe.id)?;
+        let recipe_relations = recipe_processes(&context, recipe.id)?;
 
         recipes_response.push(RecipeWithResources::new(
             recipe,
@@ -149,13 +172,11 @@ pub fn create_recipe(
 }
 
 
-//TODO: probably remove template_ids and iterate over only relations
+
 pub fn set_recipe_processes(
     context: &Context,
     recipe_id: Uuid,
-    template_ids: Vec<Uuid>,
-    name: String,
-    relations: Vec<RecipeProcessRelation>,
+    processes: Vec<InputProcessRelation>,
 ) -> FieldResult<Vec<RecipeProcessResponse>> {
     let conn = &mut context
         .pool
@@ -163,66 +184,110 @@ pub fn set_recipe_processes(
         .expect("Failed to get DB connection from pool");
 
     conn.transaction::<_, FieldError, _>(|conn| {
+        let mut map = HashMap::new();
+
+        //first save all processes involved in the map config,
+        //save a nodeId -> process hashmap relation
+        for process in &processes {
+            let InputProcessRelation {
+                node, predecessors, ..
+            } = process;
+
+            // Check if the node is present in the predecessors of at least one of the other processes
+            let not_orphan = processes
+                .iter()
+                .filter(|p| p.node != *node)
+                .flat_map(|p| &p.predecessors) // Flatten the predecessors of other processes
+                .any(|pr| pr.node == *node); // Check if any predecessor matches the current node
+
+            if !not_orphan && predecessors.len() == 0 {
+                let err = format!(
+                    "Process {} with node id {} is an orphan",
+                    process.name, node
+                );
+                return Err(FieldError::from(err));
+            }
+
+            let new_recipe =
+                NewRecipeProcess::new(&recipe_id, &process.template, &process.name, &process.node);
+
+            let inserted_recipe: RecipeProcess = diesel::insert_into(recipe_processes::table)
+                .values(new_recipe)
+                .get_result::<RecipeProcess>(conn)?;
+
+            map.insert(inserted_recipe.node_id.clone(), inserted_recipe);
+        }
+
         let mut res: Vec<RecipeProcessResponse> = Vec::new();
 
-        for template_id in template_ids {
-            let new_recipe = NewRecipeProcess::new(&recipe_id, &template_id, &name);
+        //iter again in each process's predecessors
+        for process in &processes {
+            let inserted_recipe = map.get(&process.node);
 
-            let inserted_recipe = diesel::insert_into(recipe_processes::table)
-                .values(new_recipe)
-                .get_result(conn)?;
+            if let Some(inserted_recipe) = inserted_recipe {
+                let mut recipe_res = RecipeProcessResponse::new(inserted_recipe.clone());
 
-            let mut recipe_res = RecipeProcessResponse::new(inserted_recipe);
+                let InputProcessRelation {
+                    node, predecessors, ..
+                } = process;
 
-            //get all predecessors
-            let filtered_relations: Vec<&RecipeProcessRelation> = relations
-                .iter()
-                .filter(|r| r.template_id == template_id)
-                .collect();
+                for predecessor in predecessors {
+                    let can_connect =
+                        can_connect(&context, process.template, predecessor.template)?;
+                    if !can_connect {
+                        let err = format!("Violates blacklist rules, {} -> {}", node, process.node);
+                        return Err(FieldError::from(err));
+                    }
 
-            for relation in filtered_relations {
-                let is_not_blacklisted = can_connect(&context, &relation)?;
+                    let predecessor_recipe: Option<&RecipeProcess> = map.get(&predecessor.node);
 
-                if is_not_blacklisted {
-                    let new_relation = NewProcessRelation::new(
-                        &recipe_id,
-                        &relation.template_id,
-                        &relation.template_predecessor_id,
-                    );
-                    let inserted_relation: ProcessRelation =
-                        diesel::insert_into(recipe_process_relations::table)
-                            .values(new_relation)
-                            .get_result::<ProcessRelation>(conn)?;
-                    recipe_res.add_predecessor(inserted_relation.predecessor);
-                } else {
-                    return Err(FieldError::new(
-                        "Invalid Template Relation",
-                        graphql_value!({ "code": "Invalid Template" }),
-                    ));
+                    if let Some(predecessor_recipe) = predecessor_recipe {
+                        let new_relation = NewProcessRelation::new(
+                            &recipe_id,
+                            &inserted_recipe.id,
+                            &predecessor_recipe.id,
+                        );
+                        let inserted_relation: ProcessRelation =
+                            diesel::insert_into(recipe_process_relations::table)
+                                .values(new_relation)
+                                .get_result::<ProcessRelation>(conn)?;
+
+                        recipe_res.add_predecessor(inserted_relation.predecessor);
+                    } else {
+                        let err = format!("Unable to find map field {}", node);
+                        return Err(FieldError::from(err));
+                    }
                 }
+                
+                res.push(recipe_res);
+            } else {
+                let err = format!("Unable to find map field {}", process.node);
+                return Err(FieldError::from(err));
             }
-            res.push(recipe_res);
+
         }
         Ok(res)
     })
 }
 
-fn can_connect(context: &Context, relation: &RecipeProcessRelation) -> FieldResult<bool> {
-    let RecipeProcessRelation {
-        template_id,
-        template_predecessor_id,
-    } = relation;
+fn can_connect(
+    context: &Context,
+    template_id: Uuid,
+    template_predecessor_id: Uuid,
+) -> FieldResult<bool> {
+    let recipe_process_id_first_version = get_template_first_version(&context, &template_id)?;
+    let predecessor_first_version = get_template_first_version(&context, &template_predecessor_id)?;
 
-    let recipe_process_id_first_version = get_template_first_version(&context, template_id)?;
-    let predecessor_first_version = get_template_first_version(&context, template_predecessor_id)?;
+    println!("template {}", recipe_process_id_first_version);
+    println!("predece {}", predecessor_first_version);
 
-    let res = check_blacklist_connection(
+    let res = is_blacklisted(
         &context,
         recipe_process_id_first_version,
         predecessor_first_version,
     )?;
 
-    Ok(res)
+    Ok(!res)
 }
 
 mod tests {

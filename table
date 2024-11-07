@@ -167,8 +167,9 @@ CREATE TABLE IF NOT EXISTS recipe_resources (
 CREATE TABLE IF NOT EXISTS recipe_processes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     recipe_id UUID NOT NULL REFERENCES recipes(id),
-    recipe_template_id UUID REFERENCES recipe_templates(id),
-    name TEXT NOT NULL
+    recipe_template_id UUID NOT NULL REFERENCES recipe_templates(id),
+    name TEXT NOT NULL,
+    node_id TEXT NOT NULL
 );
 
 -- Process connection relations

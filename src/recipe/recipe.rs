@@ -7,7 +7,7 @@ use crate::{
     common::resource_specification::ResourceSpecification, db::schema::{recipe_resources, recipes} 
 };
 
-use super::process::process::ProcessRelation; 
+use super::process::process::{ProcessRelation, RecipeProcessResponse}; 
 
 #[derive(Queryable, GraphQLObject, Debug, Clone)]
 #[diesel(table_name = recipes)]
@@ -49,7 +49,8 @@ pub struct NewRecipeResource {
 pub struct RecipeWithResources {
     recipe: Recipe,
     resource_specifications: Vec<ResourceSpecification>,
-    relations: Vec<ProcessRelation>
+    relations: Vec<RecipeProcessResponse>,
+
 }
 
 impl<'a>  NewRecipe<'a> {
@@ -80,7 +81,7 @@ impl NewRecipeResource {
 }
 
 impl RecipeWithResources {
-    pub fn new(recipe: Recipe, resource_specifications: Vec<ResourceSpecification>, relations: Vec<ProcessRelation>) -> Self {
+    pub fn new(recipe: Recipe, resource_specifications: Vec<ResourceSpecification>, relations: Vec<RecipeProcessResponse>) -> Self {
         RecipeWithResources {
             recipe,
             resource_specifications,

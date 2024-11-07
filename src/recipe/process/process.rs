@@ -10,8 +10,9 @@ use crate::db::schema::{recipe_process_relations, recipe_processes};
 pub struct RecipeProcess {
     pub id: Uuid,
     pub recipe_id: Uuid,
-    pub recipe_template_id: Option<Uuid>,
-    pub name: String
+    pub recipe_template_id: Uuid,
+    pub name: String,
+    pub node_id: String
 }
 
 #[derive(Insertable)]
@@ -19,19 +20,22 @@ pub struct RecipeProcess {
 pub struct NewRecipeProcess<'a> {
     pub recipe_id: &'a Uuid,
     pub recipe_template_id: &'a Uuid,
-    pub name: &'a str
+    pub name: &'a str,
+    pub node_id: &'a str
 }
 
 impl<'a>  NewRecipeProcess<'a> {
     pub fn new(
         recipe_id: &'a Uuid,
         recipe_template_id: &'a Uuid,
-        name: &'a str
+        name: &'a str,
+        node_id: &'a str
     ) -> Self {
         NewRecipeProcess {
             recipe_id,
             recipe_template_id, 
-            name
+            name,
+            node_id
         }
     }
 }
@@ -42,9 +46,9 @@ impl<'a>  NewRecipeProcess<'a> {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct ProcessRelation {
     pub id: Uuid,
-    pub recipe_id: Uuid,
     pub recipe_process_id: Uuid,
-    pub predecessor: Uuid
+    pub predecessor: Uuid,
+    pub recipe_id: Uuid
 }
 
 #[derive(Insertable)]
@@ -70,7 +74,7 @@ impl<'a> NewProcessRelation<'a> {
 }
 
 
-#[derive(GraphQLObject)]
+#[derive(GraphQLObject, Debug)]
 pub struct RecipeProcessResponse {
     pub recipe_process: RecipeProcess,
     pub predecessors: Vec<Uuid>,

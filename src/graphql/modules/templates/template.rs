@@ -292,7 +292,9 @@ pub fn get_template_first_version(context: &Context, template_id: &Uuid) -> Fiel
 
 }
 
-pub fn check_blacklist_connection(
+
+//Returns true if blacklist issue
+pub fn is_blacklisted(
     context: &Context,
     template_id: Uuid,
     predecessor: Uuid,
@@ -303,11 +305,8 @@ pub fn check_blacklist_connection(
         .expect("Failed to get DB connection from pool");
 
     let result = recipe_template_blacklists::table
-        .filter(
-            recipe_template_blacklists::recipe_template_id
-                .eq(template_id)
-                .and(recipe_template_blacklists::recipe_template_predecesor_id.eq(predecessor)),
-        )
+        .filter(recipe_template_blacklists::recipe_template_id.eq(template_id))
+        .filter(recipe_template_blacklists::recipe_template_predecesor_id.eq(predecessor))
         .first::<RecipeTemplateBlacklist>(conn);
 
     match result {

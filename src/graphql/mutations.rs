@@ -10,7 +10,7 @@ use crate::{
 use super::modules::{
     common::{agent, economic_resource, location, resource_specification}, 
     // process::process::{self, CreateRecipeProcessesResponse, ProcessExecution, RecipeProcessWithRelation}, 
-    recipe::recipe::{self, RecipeProcessRelation}, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
+    recipe::recipe::{self, InputProcessRelation, RecipeProcessRelation}, templates::template::{self, MapTemplateBlacklist, RecipeFlowTemplateArg}
 };
 
 pub struct MutationRoot;
@@ -80,11 +80,6 @@ impl MutationRoot {
     }
 
 
-    /*
-    version INTEGER NOT NULL DEFAULT 1,
-    overrides UUID REFERENCES recipe_templates(id),
-    created_by UUID REFERENCES agents(id)
-     */
     /** Recipe Templates */
     fn create_recipe_template(
         context: &Context,
@@ -152,12 +147,11 @@ impl MutationRoot {
     fn set_recipe_processes(
         context: &Context,
         recipe_id: Uuid,
-        recipe_template_ids: Vec<Uuid>,
-        name: String,
-        relations: Vec<RecipeProcessRelation>
+        processes: Vec<InputProcessRelation>
     ) -> FieldResult<Vec<RecipeProcessResponse>> {
-        recipe::set_recipe_processes(&context, recipe_id, recipe_template_ids, name, relations)
-    } 
+        recipe::set_recipe_processes(context, recipe_id, processes)
+    }
+
 }
 
 
